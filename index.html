@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineLocal | Mi Videoteca</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#e50914">
+    <link rel="apple-touch-icon" href="icono-512.png">
+    <style>
+        :root {
+            --primary: #e50914;
+            --bg: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text: #ffffff;
+            --watched: #46d369;
+            --discarded: #f44336;
+        }
+
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; border: 2px solid #0a0a0a; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        html { scroll-behavior: smooth; overflow-y: scroll; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); overflow-x: hidden; min-height: 101vh; }
+
+        /* =========================================
+           CABECERA FIJA Y TRANSLÚCIDA
+           ========================================= */
+        .top-header {
+            position: fixed; top: 0; left: 0; width: 100%;
+            padding: 15px 6%; display: flex; align-items: center; flex-wrap: wrap; 
+            z-index: 4000; 
+            box-sizing: border-box; background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: 0.3s ease;
+        }
+
+        .logo { color: var(--primary); font-size: 1.8rem; font-weight: 900; text-decoration: none; letter-spacing: -1px; flex: 1; }
+        .logo span { color: white; font-weight: 300; }
+
+        .header-controls { display: flex; gap: 10px; align-items: center; margin-right: 20px; flex-wrap: wrap; justify-content: flex-end; }
+        
+        .search-bar { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); padding: 9px 18px; border-radius: 20px; color: white; outline: none; width: 180px; transition: 0.3s; font-family: inherit; }
+        .search-bar:focus { width: 220px; border-color: var(--primary); background: rgba(255,255,255,0.12); }
+        .sort-select { background-color: #1a1a1a; color: white; border: 1px solid rgba(255,255,255,0.2); padding: 9px 35px 9px 15px; border-radius: 20px; cursor: pointer; outline: none; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; }
+
+        /* --- NUEVOS BOTONES DE ICONO (Filtros) --- */
+        .icon-group { display: flex; gap: 8px; align-items: center; }
+        .icon-btn {
+            width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05); color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: 0.3s; padding: 0;
+        }
+        .icon-btn svg { width: 18px; height: 18px; fill: white; transition: 0.3s; }
+        .icon-btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
+        .icon-btn.active svg { fill: var(--primary); }
+        .icon-btn.eye-btn.active svg { fill: var(--watched); }
+
+        /* Menú de Géneros Desplegable */
+        .genre-container { position: relative; }
+        .genre-menu {
+            position: absolute; top: 45px; right: 0; background: #1a1a1a; 
+            border: 1px solid #333; border-radius: 12px; padding: 10px;
+            display: none; grid-template-columns: repeat(2, 130px); gap: 5px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 5000;
+        }
+        .genre-menu.show { display: grid; }
+        .genre-opt { 
+            padding: 8px 12px; background: none; border: none; color: #ccc; 
+            text-align: left; cursor: pointer; border-radius: 6px; font-size: 0.85rem; font-family: inherit;
+        }
+        .genre-opt:hover { background: var(--primary); color: white; }
+        .genre-opt.active { color: var(--primary); font-weight: bold; }
+        .genre-opt.active:hover { color: white; font-weight: bold; }
+
+        /* --- BOTÓN MENÚ HAMBURGUESA / X --- */
+        .menu-btn {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; background: rgba(255,255,255,0.05); border: none;
+            width: 44px; height: 44px; border-radius: 50%; 
+            z-index: 3500; 
+            position: relative; transition: 0.3s; flex-shrink: 0;
+        }
+        .menu-btn:hover { background: rgba(255,255,255,0.15); }
+        .menu-btn .bar { width: 22px; height: 2px; background-color: white; border-radius: 2px; position: absolute; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .menu-btn .bar:nth-child(1) { transform: translateY(-7px); }
+        .menu-btn .bar:nth-child(2) { opacity: 1; }
+        .menu-btn .bar:nth-child(3) { transform: translateY(7px); }
+        .menu-btn.active .bar:nth-child(1) { transform: translateY(0) rotate(45deg); background-color: var(--primary); }
+        .menu-btn.active .bar:nth-child(2) { opacity: 0; }
+        .menu-btn.active .bar:nth-child(3) { transform: translateY(0) rotate(-45deg); background-color: var(--primary); }
+
+        /* =========================================
+           MENÚ LATERAL (SIDEBAR)
+           ========================================= */
+        .side-menu {
+            position: fixed; top: 0; right: -350px; width: 320px; height: 100%;
+            background: rgba(15, 15, 15, 0.98); backdrop-filter: blur(20px);
+            z-index: 3100;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8); transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; padding: 100px 30px 40px; box-sizing: border-box; border-left: 1px solid rgba(255,255,255,0.05);
+            overflow-y: auto; overflow-x: hidden;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .side-menu.active { right: 0; }
+        .menu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3050; opacity: 0; visibility: hidden; transition: 0.4s ease; }
+        .menu-backdrop.active { opacity: 1; visibility: visible; }
+        .menu-header h2 { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 20px 0; }
+        .menu-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px; }
+        .menu-action {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #eee; padding: 15px; width: 100%; text-align: left;
+            border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease;
+        }
+        .menu-action:hover { background: rgba(255,255,255,0.15); color: white; transform: translateX(5px); }
+        .menu-action.danger:hover { background: rgba(229,9,20,0.2); border-color: var(--primary); color: var(--primary); }
+        .menu-action svg { width: 17px; height: 17px; fill: currentColor; flex-shrink: 0; opacity: 0.75; transition: opacity 0.2s; }
+        .menu-action:hover svg { opacity: 1; }
+        .menu-action.active-view { border-color: var(--primary); color: white; background: rgba(229,9,20,0.1); }
+
+        /* =========================================
+           CONTENIDO PRINCIPAL
+           ========================================= */
+        .main-content { padding-top: 80px; } 
+
+        .section-title-indicator {
+            padding: 20px 6% 15px; font-size: 1.5rem; font-weight: 800; color: white; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-title-indicator span { font-size: 1rem; color: #888; font-weight: 400; }
+
+        .stats-container { padding: 0 6% 15px; text-align: right; font-size: 0.9rem; color: #888; }
+        #contador-texto b { color: var(--primary); font-weight: 800; }
+
+        .container { padding: 0 6% 50px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 30px; }
+        
+        .continue-section { padding: 0 6% 40px; display: none; }
+        .continue-section h2 { font-size: 1.4rem; margin-bottom: 20px; color: #eee; letter-spacing: 1px; }
+        #contenedor-continuar { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+        /* ── Podría interesarte ── */
+        .suggest-section { padding: 0 6% 40px; display: none; }
+        .suggest-section h2 { font-size: 1.4rem; margin-bottom: 4px; color: #eee; letter-spacing: 1px; }
+        .suggest-subtitle { font-size: 0.82rem; color: #888; margin-bottom: 20px; }
+        #contenedor-suggest { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .genre-tag {
+            position: absolute; bottom: 10px; left: 10px; z-index: 25;
+            background: rgba(229,9,20,0.85); color: #fff;
+            padding: 3px 9px; border-radius: 5px; font-size: 0.7rem;
+            font-weight: 600; letter-spacing: 0.5px; pointer-events: none;
+            backdrop-filter: blur(4px);
+            opacity: 1; transition: opacity 0.25s ease;
+        }
+        .movie-card:hover .genre-tag { opacity: 0; }
+
+        .fade-in-wrapper { opacity: 0; animation: aparecer 0.6s ease-out forwards; transition: opacity 0.4s, transform 0.4s; }
+        @keyframes aparecer { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .movie-card {
+            position: relative; border-radius: 12px; overflow: hidden; background: var(--card-bg);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); aspect-ratio: 2/3; box-shadow: 0 10px 20px rgba(0,0,0,0.5); cursor: pointer;
+        }
+        .movie-card.horizontal { aspect-ratio: 16 / 9; }
+        .movie-card:hover { transform: scale(1.06); z-index: 5; box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
+        .movie-card img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.4s ease, filter 0.4s ease; }
+        .movie-card.is-watched img { opacity: 0.4; filter: grayscale(0.8); }
+
+        .overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; top: 0; background: linear-gradient(transparent 40%, rgba(0,0,0,0.9) 90%);
+            padding: 20px; opacity: 0; transition: 0.3s; display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        .movie-card:hover .overlay { opacity: 1; }
+
+        .stars-container { color: #ffc107; margin-bottom: -5px; font-size: 0.9rem; }
+        .star-empty { color: #444; }
+        .movie-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .year-tag { color: #fff; font-size: 0.85rem; font-weight: 500; }
+        .movie-card h3 { margin: 0 0 5px; font-size: 1.1rem; }
+        .movie-card p { font-size: 0.8rem; color: #ccc; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .btn-play { background: var(--primary); color: white; text-decoration: none; text-align: center; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+        
+        .fav-btn, .watched-btn, .discard-btn, .remove-btn {
+            position: absolute; top: 10px; z-index: 20; background: rgba(0,0,0,0.6); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .fav-btn { right: 10px; }
+        .watched-btn { right: 48px; }
+        .discard-btn { right: 86px; } 
+        .remove-btn { right: 10px; opacity: 0; } 
+        
+        .movie-card:hover .remove-btn { opacity: 1; }
+        .fav-btn:hover, .watched-btn:hover, .discard-btn:hover, .remove-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.9); }
+        .fav-btn svg, .watched-btn svg, .discard-btn svg, .remove-btn svg { width: 18px; height: 18px; fill: #ccc; }
+        .fav-btn.active svg { fill: var(--primary); }
+        .watched-btn.active svg { fill: var(--watched); }
+        .discard-btn.active svg { fill: var(--discarded); }
+        .remove-btn:hover svg { fill: #fff; }
+
+        .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(255,255,255,0.2); z-index: 10; }
+        .progress-bar { height: 100%; background: var(--primary); }
+        .time-left-tag { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; z-index: 25; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); pointer-events: none; }
+
+        .btn-top {
+            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background-color: var(--primary); border: none; border-radius: 50%; cursor: pointer; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: 0.3s; display: none; align-items: center; justify-content: center;
+        }
+
+        /* =========================================
+           FILTROS EN MENÚ LATERAL (solo móvil)
+           ========================================= */
+        .menu-filters { display: none; }
+        .menu-divider { border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0 5px; }
+        .menu-select {
+            width: 100%; background: #1c1c1c; color: #fff;
+            border: 1px solid rgba(255,255,255,0.15); padding: 13px 38px 13px 15px;
+            border-radius: 8px; cursor: pointer; outline: none; font-family: inherit;
+            font-size: 0.9rem; appearance: none; transition: background 0.2s, border-color 0.2s;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 14px center;
+        }
+        .menu-select option { background: #1c1c1c; color: #fff; }
+        .menu-select:hover { background-color: #2a2a2a; border-color: rgba(255,255,255,0.3); }
+        .menu-filter-toggles { display: flex; gap: 10px; margin-top: 10px; }
+        .menu-filter-toggles .menu-action { flex: 1; font-size: 0.82rem; padding: 12px 8px; justify-content: center; }
+        .menu-filter-toggles .menu-action.active { border-color: var(--primary); color: var(--primary); background: rgba(229,9,20,0.1); }
+        .menu-filter-toggles .menu-action.eye-active { border-color: var(--watched); color: var(--watched); background: rgba(70,211,105,0.1); }
+        .menu-genre-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; margin-top: 8px; }
+
+        /* =========================================
+           RESPONSIVE MÓVIL
+           ========================================= */
+        @media (max-width: 768px) {
+            /* Header: fila única — logo | buscador | hamburguesa */
+            .logo { flex: none; }
+            .search-wrapper { flex: 1; margin: 0 12px; }
+            .search-bar { width: 100%; }
+            .search-bar:focus { width: 100%; }
+            .header-controls { display: none; } /* Filtros y orden se trasladan al menú lateral */
+
+            /* Contenido y cuadrícula */
+            .main-content { padding-top: 70px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+            #contenedor-continuar, #contenedor-suggest { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+            /* Menú lateral ocupa ancho completo; padding-top ajustado al nuevo header de 1 fila */
+            .side-menu { width: 100%; right: -100%; padding-top: 75px; padding-bottom: 60px; }
+
+            /* Mostrar sección de filtros solo en móvil */
+            .menu-filters { display: block; }
+        }
+
+        /* Botones de acción en tarjetas, ajuste para pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            .fav-btn, .watched-btn, .discard-btn { width: 28px; height: 28px; }
+            .fav-btn svg, .watched-btn svg, .discard-btn svg { width: 15px; height: 15px; }
+            .watched-btn { right: 44px; }
+            .discard-btn { right: 78px; }
+        }
+
+        /* =========================================
+           ESTILOS EXCLUSIVOS DEL BANNER CARRUSEL
+           ========================================= */
+        #banner-carrusel {
+            position: relative;
+            width: 100%;
+            height: 75vh;
+            min-height: 450px;
+            background: #000;
+            overflow: hidden;
+            margin-bottom: 20px;
+            transition: height 0.5s ease, min-height 0.5s ease, opacity 0.4s ease, margin-bottom 0.5s ease;
+        }
+
+        #banner-carrusel.banner-oculto {
+            height: 0 !important;
+            min-height: 0 !important;
+            opacity: 0;
+            margin-bottom: 0;
+            pointer-events: none;
+        }
+
+        /* Search wrapper con botón ✕ para limpiar filtros */
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-wrapper .search-bar {
+            width: 100%;
+            padding-right: 36px; /* espacio para el botón ✕ */
+        }
+
+        #btn-clear-search {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 1rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            display: none; /* oculto por defecto, se muestra cuando hay filtros activos */
+            transition: color 0.2s;
+        }
+
+        #btn-clear-search:hover { color: #fff; }
+        #btn-clear-search.visible { display: block; }
+
+        .banner-slide {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .banner-slide.active {
+            opacity: 1;
+            z-index: 1;
+        }
+
+        /* Imagen al 50% izquierdo 
+        .banner-bg-img {
+            position: absolute;
+            left: 0; top: 0;
+            width: 55%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }*/
+
+        /* Video al 70% derecho con fundido mucho más suave */
+        .banner-bg-video {
+            position: absolute;
+            right: 0; top: 0;
+            width: 80%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 35%);
+            mask-image: linear-gradient(to right, transparent 0%, black 35%);
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .banner-slide.active .banner-bg-video {
+            opacity: 1;
+        }
+
+        /* Overlay AHORA DENTRO DEL SLIDE para asegurar lectura de textos */
+        .banner-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.95) 100%),
+                        linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 45%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* Estructura Flexbox: Título arriba, resto abajo */
+        .banner-content {
+            position: relative;
+            z-index: 4;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px 6% 40px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        /* Título Arriba Izquierda */
+        .banner-top {
+            pointer-events: auto;
+            margin-top: 20px;
+        }
+
+        .banner-top h2 {
+            margin: 0;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 15px rgba(0,0,0,0.8);
+            max-width: 80%;
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+
+        /* Resto Abajo Izquierda */
+        .banner-bottom {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .banner-meta-info {
+            font-size: 1rem;
+            color: #fff;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .banner-desc {
+            font-size: 1.05rem;
+            color: #ddd;
+            line-height: 1.5;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.8);
+        }
+
+        .banner-btn {
+            background: #fff;
+            color: #000;
+            text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 4px;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            align-self: flex-start;
+            transition: 0.3s;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .banner-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        /* Botón de mute posicionado de forma absoluta arriba a la derecha */
+        .banner-mute-btn {
+            position: absolute;
+            top: 20px;
+            right: 6%;
+            z-index: 10;
+        }
+
+        /* Controles, flechas alineados abajo derecha */
+        .carrusel-controls-wrapper {
+            position: absolute;
+            right: 6%;
+            bottom: 40px;
+            z-index: 5;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .carrusel-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .carrusel-arrow, .banner-mute-btn {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+        .carrusel-arrow svg, .banner-mute-btn svg { width: 20px; height: 20px; fill: white; }
+
+        .carrusel-arrow:hover, .banner-mute-btn:hover { 
+            background: rgba(255,255,255,0.2); 
+            border-color: #fff;
+        }
+
+        .carrusel-dots { display: flex; gap: 8px; }
+        .carrusel-dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; cursor: pointer; transition: 0.3s; }
+        .carrusel-dot.active { background: #fff; transform: scale(1.4); }
+
+        @media (max-width: 900px) {
+            .banner-bottom { width: 65%; }
+        }
+
+        @media (max-width: 600px) {
+            #banner-carrusel { height: 50vh; min-height: 400px; }
+            /*.banner-bg-img { width: 100%; mask-image: none; -webkit-mask-image: none; }*/
+            .banner-bg-video { display: none; } /* En móvil mejor no cargar video por rendimiento/datos */
+            .banner-bottom { width: 100%; }
+            .banner-desc { -webkit-line-clamp: 2; font-size: 0.95rem; }
+            .carrusel-controls-wrapper { display: none; }
+            .banner-mute-btn { display: none; }
+        }
+        /* =========================================
+           TOASTS Y MODAL DE CONFIRMACIÓN
+           ========================================= */
+        #toast-container {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; display: flex; flex-direction: column; align-items: center;
+            gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background: #1e1e1e; color: white; padding: 13px 22px; border-radius: 8px;
+            font-size: 0.9rem; border-left: 4px solid #555; white-space: nowrap;
+            opacity: 0; transform: translateY(16px); transition: opacity 0.35s ease, transform 0.35s ease;
+            pointer-events: auto; box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-left-color: #46d369; }
+        .toast.error   { border-left-color: #f44336; }
+        .toast.warning { border-left-color: #ffc107; }
+        .toast.info    { border-left-color: var(--primary); }
+
+        .confirm-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+            z-index: 9998; display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .confirm-modal.show { opacity: 1; visibility: visible; }
+        .confirm-box {
+            background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 32px 36px; max-width: 420px; width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        #confirm-mensaje { margin: 0 0 26px; font-size: 1rem; color: #ddd; line-height: 1.55; }
+        .confirm-btns { display: flex; gap: 12px; }
+        .confirm-btn-si {
+            flex: 1; background: var(--primary); color: white; border: none;
+            padding: 13px; border-radius: 6px; font-weight: 700; cursor: pointer;
+            transition: 0.3s; font-family: inherit; font-size: 0.9rem;
+        }
+        .confirm-btn-si:hover { background: #c0070f; }
+        .confirm-btn-no {
+            flex: 1; background: rgba(255,255,255,0.08); color: white;
+            border: 1px solid rgba(255,255,255,0.2); padding: 13px; border-radius: 6px;
+            font-weight: 700; cursor: pointer; transition: 0.3s; font-family: inherit; font-size: 0.9rem;
+        }
+        .confirm-btn-no:hover { background: rgba(255,255,255,0.15); }
+
+        /* =========================================
+           DURACIÓN, FECHA VISTA Y VALORACIÓN PERSONAL
+           ========================================= */
+        .duration-tag {
+            font-size: 0.7rem; color: #bbb; letter-spacing: 0.3px;
+            margin-left: 8px; opacity: 0.85;
+        }
+        .watched-date {
+            font-size: 0.68rem; color: var(--watched); margin-bottom: 4px;
+            letter-spacing: 0.2px; opacity: 0.85;
+        }
+        .user-rating {
+            display: flex; gap: 2px; margin-top: 3px; margin-bottom: 2px;
+        }
+        .user-rating-star {
+            font-size: 0.85rem; cursor: pointer; color: #555;
+            transition: color 0.15s, transform 0.1s;
+            line-height: 1;
+        }
+        .user-rating-star.active { color: #f5c518; }
+        .user-rating-star:hover { color: #f5c518; transform: scale(1.2); }
+        .user-rating-label {
+            font-size: 0.65rem; color: #777; margin-top: 1px; letter-spacing: 0.3px;
+        }
+
+        /* =========================================
+           MODAL DE ESTADÍSTICAS
+           ========================================= */
+        .stats-modal {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .stats-modal.active { display: flex; }
+        .stats-box {
+            background: #141414; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 36px; width: 100%; max-width: 560px;
+            max-height: 85vh; overflow-y: auto;
+        }
+        .stats-box h2 { margin: 0 0 6px; font-size: 1.4rem; }
+        .stats-box .stats-user-sub { font-size: 0.8rem; color: #666; margin-bottom: 28px; }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px; margin-bottom: 28px;
+        }
+        .stats-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; padding: 16px; text-align: center;
+        }
+        .stats-card .stats-num {
+            font-size: 1.8rem; font-weight: 800; color: var(--primary); line-height: 1;
+        }
+        .stats-card .stats-label { font-size: 0.72rem; color: #888; margin-top: 5px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .stats-section-title { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .stats-genre-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .stats-genre-name { font-size: 0.82rem; width: 100px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stats-genre-bar-wrap { flex: 1; background: rgba(255,255,255,0.07); border-radius: 4px; height: 6px; }
+        .stats-genre-bar-fill { height: 100%; border-radius: 4px; background: var(--primary); transition: width 0.6s ease; }
+        .stats-genre-count { font-size: 0.75rem; color: #666; width: 24px; text-align: right; flex-shrink: 0; }
+        .stats-close-btn {
+            margin-top: 28px; width: 100%; padding: 12px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+            color: white; border-radius: 8px; font-family: inherit;
+            font-size: 0.9rem; cursor: pointer; transition: 0.2s;
+        }
+        .stats-close-btn:hover { background: rgba(255,255,255,0.14); }
+
+        /* =========================================
+           PANTALLA DE SELECCIÓN DE USUARIO
+           ========================================= */
+        .user-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #0a0a0a;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; text-align: center;
+            opacity: 1; transition: opacity 0.4s ease;
+        }
+        .user-overlay.fade-out { opacity: 0; pointer-events: none; }
+        .user-overlay-logo { font-size: 2rem; font-weight: 900; letter-spacing: 4px; margin: 0 0 8px; }
+        .user-overlay-logo span { color: var(--primary); }
+        .user-overlay-sub { color: #777; font-size: 0.95rem; margin: 0 0 44px; letter-spacing: 1px; }
+        .user-cards { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 620px; margin-bottom: 32px; }
+        .user-card {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            cursor: pointer; position: relative; transition: transform 0.2s;
+        }
+        .user-card:hover { transform: scale(1.06); }
+        .user-avatar {
+            width: 80px; height: 80px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.2rem; font-weight: 800; color: white;
+            border: 3px solid transparent; transition: border-color 0.2s;
+        }
+        .user-card:hover .user-avatar { border-color: rgba(255,255,255,0.7); }
+        .user-card-name { font-size: 0.88rem; color: #bbb; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-delete-btn {
+            position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
+            border-radius: 50%; background: #2a2a2a; border: 1px solid #555;
+            color: #aaa; font-size: 0.65rem; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            transition: background 0.2s, color 0.2s;
+        }
+        .user-delete-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .user-cards.edit-mode .user-delete-btn { display: flex; }
+        .btn-add-user {
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18);
+            color: white; padding: 12px 30px; border-radius: 8px;
+            font-family: inherit; font-size: 0.9rem; cursor: pointer;
+            transition: 0.2s; margin-bottom: 14px;
+        }
+        .btn-add-user:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.35); }
+        .btn-edit-users { background: none; border: none; color: #555; font-family: inherit; font-size: 0.78rem; cursor: pointer; transition: color 0.2s; }
+        .btn-edit-users:hover { color: #999; }
+        /* Modal de nuevo usuario */
+        .new-user-modal {
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .new-user-box {
+            background: #181818; border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px; padding: 32px; width: 300px;
+            display: flex; flex-direction: column; gap: 16px; text-align: left;
+        }
+        .new-user-box h3 { margin: 0; font-size: 1.05rem; color: #eee; }
+        .new-user-input {
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+            color: white; padding: 12px 16px; border-radius: 8px;
+            font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+        }
+        .new-user-input:focus { border-color: var(--primary); }
+        .new-user-actions { display: flex; gap: 10px; }
+        .btn-confirm-user {
+            flex: 1; background: var(--primary); color: white; border: none;
+            padding: 12px; border-radius: 8px; font-family: inherit;
+            font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .btn-confirm-user:hover { background: #c0070f; }
+        .btn-cancel-user {
+            flex: 1; background: rgba(255,255,255,0.07); color: white;
+            border: 1px solid rgba(255,255,255,0.18); padding: 12px; border-radius: 8px;
+            font-family: inherit; font-size: 0.9rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-cancel-user:hover { background: rgba(255,255,255,0.14); }
+        /* Perfil activo en cabecera del menú lateral */
+        .menu-user-display {
+            display: flex; align-items: center; gap: 12px;
+            padding: 18px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 8px;
+        }
+        .menu-user-avatar {
+            width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 800; color: white;
+        }
+        .menu-user-info { flex: 1; min-width: 0; }
+        .menu-user-name { font-size: 0.92rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-user-sub { font-size: 0.7rem; color: #666; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+    <!-- ========================================
+         PANTALLA DE SELECCIÓN DE USUARIO
+         ======================================== -->
+    <div id="user-overlay" class="user-overlay">
+        <h1 class="user-overlay-logo">CINE<span>LOCAL</span></h1>
+        <p class="user-overlay-sub">¿Quién está viendo?</p>
+        <div id="user-cards" class="user-cards"></div>
+        <button id="btn-add-user" class="btn-add-user">+ Añadir usuario</button>
+        <button id="btn-edit-users" class="btn-edit-users">Gestionar perfiles</button>
+
+        <!-- Modal de nombre de nuevo usuario -->
+        <div id="new-user-modal" class="new-user-modal" style="display:none">
+            <div class="new-user-box">
+                <h3>Nuevo usuario</h3>
+                <input type="text" id="new-user-name" class="new-user-input" placeholder="Nombre (ej: Papá)" maxlength="20">
+                <div class="new-user-actions">
+                    <button id="btn-cancel-user" class="btn-cancel-user">Cancelar</button>
+                    <button id="btn-confirm-user" class="btn-confirm-user">Crear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de notificaciones toast -->
+    <div id="toast-container"></div>
+
+    <!-- Modal de confirmación (reemplaza los confirm() del navegador) -->
+    <div id="confirm-modal" class="confirm-modal">
+        <div class="confirm-box">
+            <p id="confirm-mensaje"></p>
+            <div class="confirm-btns">
+                <button id="confirm-si" class="confirm-btn-si">Sí, confirmar</button>
+                <button id="confirm-no" class="confirm-btn-no">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de estadísticas personales -->
+    <div id="stats-modal" class="stats-modal" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="stats-box">
+            <h2>Mis estadísticas</h2>
+            <p class="stats-user-sub" id="stats-user-sub"></p>
+            <div class="stats-grid" id="stats-grid"></div>
+            <p class="stats-section-title">Géneros más vistos</p>
+            <div id="stats-genres"></div>
+            <button class="stats-close-btn" onclick="document.getElementById('stats-modal').classList.remove('active')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Input oculto para importar preferencias -->
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importarPreferencias(event)">
+
+    <header class="top-header">
+        <a href="index.html" class="logo">CINE<span>LOCAL</span></a>
+
+        <!-- Buscador siempre visible: en escritorio entre logo y controles; en móvil entre logo y hamburguesa -->
+        <div class="search-wrapper">
+            <input type="text" class="search-bar" placeholder="Buscar película..." id="buscador">
+            <button id="btn-clear-search" title="Limpiar filtros">✕</button>
+        </div>
+
+        <!-- Controles de filtro y orden — visibles solo en escritorio -->
+        <div class="header-controls">
+            <div class="icon-group">
+                <div class="genre-container">
+                    <button class="icon-btn" onclick="toggleGenreMenu(event)" title="Géneros">
+                        <svg viewBox="0 0 24 24"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg>
+                    </button>
+                    <div class="genre-menu" id="genre-menu"></div>
+                </div>
+
+                <button id="btn-favoritos" class="icon-btn" title="Mis Favoritas">
+                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </button>
+
+                <button id="btn-ocultar-vistas" class="icon-btn eye-btn" title="Mostrar solo pendientes (no vistas)">
+                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                </button>
+            </div>
+
+            <select id="ordenar" class="sort-select">
+                <option value="puntuacion">Orden: Mejores Valoradas</option>
+                <option value="az">Orden: A - Z</option>
+                <option value="anio">Orden: Más Recientes</option>
+            </select>
+        </div>
+
+        <button class="menu-btn" id="menu-btn" aria-label="Abrir menú">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+    </header>
+
+    <nav class="side-menu" id="side-menu">
+
+        <!-- Perfil de usuario activo -->
+        <div class="menu-user-display">
+            <div class="menu-user-avatar" id="menu-user-avatar"></div>
+            <div class="menu-user-info">
+                <div class="menu-user-name" id="menu-user-name">—</div>
+                <div class="menu-user-sub">CineLocal</div>
+            </div>
+        </div>
+
+        <!-- FILTROS — solo visibles en móvil (en escritorio están en el header) -->
+        <div class="menu-filters">
+            <div class="menu-header">
+                <h2>Ordenar</h2>
+            </div>
+            <select id="ordenar-mobile" class="menu-select">
+                <option value="puntuacion">Mejores Valoradas</option>
+                <option value="az">A - Z</option>
+                <option value="anio">Más Recientes</option>
+            </select>
+
+            <div class="menu-header" style="margin-top: 18px;">
+                <h2>Filtros rápidos</h2>
+            </div>
+            <div class="menu-filter-toggles">
+                <button id="btn-fav-mobile" class="menu-action">
+                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> Favoritas
+                </button>
+                <button id="btn-eye-mobile" class="menu-action">
+                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> Pendientes
+                </button>
+            </div>
+
+            <div class="menu-header" style="margin-top: 18px;">
+                <h2>Géneros</h2>
+            </div>
+            <select id="genero-select-mobile" class="menu-select"></select>
+
+            <hr class="menu-divider">
+        </div>
+
+        <div class="menu-header">
+            <h2>Opciones de Biblioteca</h2>
+        </div>
+        <ul class="menu-list">
+            <li>
+                <button class="menu-action active-view" id="btn-view-home" onclick="cambiarVista('home')">
+                    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Ver Inicio
+                </button>
+            </li>
+            <li>
+                <button class="menu-action" id="btn-view-discarded" onclick="cambiarVista('discarded')">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68l11.22-11.22C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg> Ver Descartadas
+                </button>
+            </li>
+            <li style="margin-top:10px; padding-top:10px; border-top: 1px solid rgba(255,255,255,0.07);">
+                <button class="menu-action" onclick="mostrarEstadisticas()">
+                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Mis estadísticas
+                </button>
+            </li>
+            <li>
+                <button class="menu-action" onclick="exportarPreferencias()">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Exportar mis datos
+                </button>
+            </li>
+            <li>
+                <button class="menu-action" onclick="document.getElementById('import-file-input').click()">
+                    <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg> Importar mis datos
+                </button>
+            </li>
+            <li style="margin-top:10px; padding-top:10px; border-top: 1px solid rgba(255,255,255,0.07);">
+                <button class="menu-action danger" onclick="limpiarHistorialVistas()">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Borrar Vistas
+                </button>
+            </li>
+            <li>
+                <button class="menu-action danger" onclick="limpiarSeguirViendo()">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg> Borrar "Seguir Viendo"
+                </button>
+            </li>
+            <li>
+                <button class="menu-action danger" onclick="limpiarDescartadas()">
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> Resetear Descartes
+                </button>
+            </li>
+            <li style="margin-top:10px; padding-top:10px; border-top: 1px solid rgba(255,255,255,0.07);">
+                <button class="menu-action" onclick="cerrarSesion()">
+                    <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg> Cambiar usuario
+                </button>
+            </li>
+        </ul>
+    </nav>
+    <div class="menu-backdrop" id="menu-backdrop"></div>
+
+    <main class="main-content">
+        <section id="banner-carrusel">
+            <div id="banner-slides-contenedor"></div>
+            
+            <button class="banner-mute-btn" id="banner-mute-btn" onclick="toggleMuteBanner()" title="Silenciar/Activar sonido">
+                <svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+            </button>
+
+            <div class="carrusel-controls-wrapper">
+                <div class="carrusel-controls">
+                    <button class="carrusel-arrow" onclick="anteriorSlide()">←</button>
+                    <div class="carrusel-dots" id="carrusel-dots"></div>
+                    <button class="carrusel-arrow" onclick="siguienteSlide()">→</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-title-indicator" id="section-indicator"></div>
+
+        <div id="section-continue" class="continue-section">
+            <h2>Seguir viendo</h2>
+            <div class="grid" id="contenedor-continuar"></div>
+            <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 40px;">
+        </div>
+
+        <div id="section-suggest" class="suggest-section">
+            <h2>Podría interesarte</h2>
+            <p class="suggest-subtitle" id="suggest-subtitle"></p>
+            <div class="grid" id="contenedor-suggest"></div>
+            <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 40px;">
+        </div>
+
+        <div class="stats-container">
+            <span id="contador-texto">Cargando colección...</span>
+        </div>
+
+        <div class="container">
+            <div class="grid" id="contenedor"></div>
+        </div>
+    </main>
+
+    <button id="btn-top" class="btn-top" onclick="irArriba()">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4l-8 8h6v8h4v-8h6z" fill="white"/></svg>
+    </button>
+
+    <script src="data.js"></script>
+
+    <script>
+        // =========================================
+        // GESTIÓN MULTI-USUARIO
+        // =========================================
+        const USER_COLORS  = ['#e50914','#0070f3','#f5a623','#7b68ee','#2ecc71','#e91e8c','#00bcd4','#ff5722'];
+        const PREF_KEYS    = ['mis_favoritos','pelis_vistas','pelis_descartadas','progreso_video'];
+
+        function getUsuarioActivo() { return localStorage.getItem('cinelocal_usuario_activo'); }
+        function getUsuarios()      { return JSON.parse(localStorage.getItem('cinelocal_usuarios')) || []; }
+
+        /** Lee una preferencia del usuario activo (ya parseada). */
+        function getPref(clave, porDefecto = null) {
+            const uid = getUsuarioActivo();
+            if (!uid) return porDefecto;
+            const raw = localStorage.getItem(`u_${uid}_${clave}`);
+            if (raw === null) return porDefecto;
+            try { return JSON.parse(raw); } catch { return porDefecto; }
+        }
+        /** Guarda una preferencia del usuario activo (serializa a JSON). */
+        function setPref(clave, valor) {
+            const uid = getUsuarioActivo();
+            if (uid) localStorage.setItem(`u_${uid}_${clave}`, JSON.stringify(valor));
+        }
+        /** Elimina una preferencia del usuario activo. */
+        function removePref(clave) {
+            const uid = getUsuarioActivo();
+            if (uid) localStorage.removeItem(`u_${uid}_${clave}`);
+        }
+
+        function crearUsuario(nombre) {
+            const usuarios = getUsuarios();
+            const id    = 'u' + Date.now();
+            const color = USER_COLORS[usuarios.length % USER_COLORS.length];
+            const usuario = { id, nombre: nombre.trim(), color, creado: Date.now() };
+            usuarios.push(usuario);
+            localStorage.setItem('cinelocal_usuarios', JSON.stringify(usuarios));
+            // Si es el primer usuario, migrar datos sin prefijo (datos existentes de antes del sistema multi-usuario)
+            if (usuarios.length === 1) {
+                PREF_KEYS.forEach(clave => {
+                    const v = localStorage.getItem(clave);
+                    if (v !== null) {
+                        localStorage.setItem(`u_${id}_${clave}`, v);
+                        localStorage.removeItem(clave);
+                    }
+                });
+            }
+            return usuario;
+        }
+
+        function eliminarUsuario(id) {
+            let usuarios = getUsuarios().filter(u => u.id !== id);
+            localStorage.setItem('cinelocal_usuarios', JSON.stringify(usuarios));
+            PREF_KEYS.forEach(clave => localStorage.removeItem(`u_${id}_${clave}`));
+            if (getUsuarioActivo() === id) localStorage.removeItem('cinelocal_usuario_activo');
+        }
+
+        function activarUsuario(id) {
+            localStorage.setItem('cinelocal_usuario_activo', id);
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('cinelocal_usuario_activo');
+            if (typeof toggleMenu === 'function') toggleMenu();
+            mostrarPantallaUsuarios();
+        }
+
+        // ── Overlay de selección ────────────────
+        function mostrarPantallaUsuarios() {
+            const overlay = document.getElementById('user-overlay');
+            overlay.classList.remove('fade-out');
+            overlay.style.display = 'flex';
+            // Salir del modo edición al volver
+            document.getElementById('user-cards').classList.remove('edit-mode');
+            document.getElementById('btn-edit-users').textContent = 'Gestionar perfiles';
+            renderizarTarjetasUsuario();
+        }
+
+        function ocultarPantallaUsuarios(uid) {
+            const overlay = document.getElementById('user-overlay');
+            overlay.classList.add('fade-out');
+            setTimeout(() => { overlay.style.display = 'none'; }, 420);
+            actualizarMenuUsuario(uid);
+        }
+
+        function actualizarMenuUsuario(uid) {
+            const usuario = getUsuarios().find(u => u.id === uid);
+            if (!usuario) return;
+            const avatarEl = document.getElementById('menu-user-avatar');
+            const nameEl   = document.getElementById('menu-user-name');
+            if (avatarEl) { avatarEl.style.background = usuario.color; avatarEl.textContent = usuario.nombre.charAt(0).toUpperCase(); }
+            if (nameEl)   nameEl.textContent = usuario.nombre;
+        }
+
+        function renderizarTarjetasUsuario() {
+            const container = document.getElementById('user-cards');
+            container.innerHTML = '';
+            getUsuarios().forEach(u => {
+                const card = document.createElement('div');
+                card.className = 'user-card';
+                card.innerHTML = `
+                    <div class="user-avatar" style="background:${u.color}">${u.nombre.charAt(0).toUpperCase()}</div>
+                    <span class="user-card-name">${u.nombre}</span>
+                    <button class="user-delete-btn" title="Eliminar perfil"
+                        onclick="confirmarEliminarUsuario(event,'${u.id}','${u.nombre.replace(/'/g,"\\'")}')">✕</button>
+                `;
+                card.addEventListener('click', () => {
+                    activarUsuario(u.id);
+                    ocultarPantallaUsuarios(u.id);
+                    if (typeof renderizar === 'function') renderizar(buscador ? buscador.value : '');
+                });
+                container.appendChild(card);
+            });
+        }
+
+        function confirmarEliminarUsuario(e, id, nombre) {
+            e.stopPropagation();
+            mostrarConfirm(`¿Eliminar el perfil de "${nombre}"? Se borrarán todas sus preferencias.`, () => {
+                eliminarUsuario(id);
+                renderizarTarjetasUsuario();
+                if (!getUsuarioActivo()) mostrarPantallaUsuarios();
+            });
+        }
+
+        // ── Eventos del overlay ─────────────────
+        document.getElementById('btn-add-user').addEventListener('click', () => {
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-modal').style.display = 'flex';
+            setTimeout(() => document.getElementById('new-user-name').focus(), 50);
+        });
+        document.getElementById('btn-cancel-user').addEventListener('click', () => {
+            document.getElementById('new-user-modal').style.display = 'none';
+        });
+        document.getElementById('btn-confirm-user').addEventListener('click', () => {
+            const nombre = document.getElementById('new-user-name').value.trim();
+            if (!nombre) { document.getElementById('new-user-name').focus(); return; }
+            const usuario = crearUsuario(nombre);
+            document.getElementById('new-user-modal').style.display = 'none';
+            activarUsuario(usuario.id);
+            ocultarPantallaUsuarios(usuario.id);
+            if (typeof renderizar === 'function') renderizar('');
+        });
+        document.getElementById('new-user-name').addEventListener('keydown', e => {
+            if (e.key === 'Enter')  document.getElementById('btn-confirm-user').click();
+            if (e.key === 'Escape') document.getElementById('btn-cancel-user').click();
+        });
+        document.getElementById('btn-edit-users').addEventListener('click', () => {
+            const cards = document.getElementById('user-cards');
+            const btn   = document.getElementById('btn-edit-users');
+            cards.classList.toggle('edit-mode');
+            btn.textContent = cards.classList.contains('edit-mode') ? 'Listo' : 'Gestionar perfiles';
+        });
+
+        // =========================================
+        // SISTEMA DE NOTIFICACIONES
+        // =========================================
+        function mostrarToast(mensaje, tipo = 'info') {
+            const contenedor = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.textContent = mensaje;
+            contenedor.appendChild(toast);
+            // Doble requestAnimationFrame para asegurar la transición CSS
+            requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        function mostrarConfirm(mensaje, onSi) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-mensaje').textContent = mensaje;
+            modal.classList.add('show');
+            document.getElementById('confirm-si').onclick = () => {
+                modal.classList.remove('show');
+                onSi();
+            };
+            document.getElementById('confirm-no').onclick = () => {
+                modal.classList.remove('show');
+            };
+        }
+
+        // =========================================
+        // ESTADO GLOBAL Y VISTAS
+        // =========================================
+        let vistaActual = 'home'; // 'home' o 'discarded'
+        let generoActual = "Todos";
+        let soloFavoritos = false;
+        let mostrarSoloPendientes = false;
+
+        let paginaActual = 1;
+        const pelisPorPagina = 12;
+        let peliculasFiltradasGlobal = []; 
+        let cargando = false; 
+
+        // =========================================
+        // NODOS DEL DOM
+        // =========================================
+        const btnMenu = document.getElementById('menu-btn');
+        const sideMenu = document.getElementById('side-menu');
+        const backdrop = document.getElementById('menu-backdrop');
+        const contenedor = document.getElementById('contenedor');
+        const buscador = document.getElementById('buscador');
+        const selectorOrden = document.getElementById('ordenar');
+        const sectionIndicator = document.getElementById('section-indicator');
+        const btnTop = document.getElementById('btn-top');
+        const menuGeneros = document.getElementById('genre-menu');
+
+        function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+        // =========================================
+        // CONTROL DEL MENÚ
+        // =========================================
+        let _menuScrollY = 0;
+        function toggleMenu() {
+            btnMenu.classList.toggle('active');
+            sideMenu.classList.toggle('active');
+            backdrop.classList.toggle('active');
+
+            const abierto = sideMenu.classList.contains('active');
+            if (abierto) {
+                // Bloquear scroll del fondo (compatible iOS Safari)
+                _menuScrollY = window.scrollY;
+                document.body.style.position   = 'fixed';
+                document.body.style.top        = `-${_menuScrollY}px`;
+                document.body.style.width      = '100%';
+                document.body.style.overflowY  = 'scroll'; // evita salto de scrollbar en desktop
+            } else {
+                // Restaurar scroll del fondo
+                document.body.style.position  = '';
+                document.body.style.top       = '';
+                document.body.style.width     = '';
+                document.body.style.overflowY = '';
+                window.scrollTo(0, _menuScrollY);
+            }
+        }
+
+        btnMenu.addEventListener('click', toggleMenu);
+        backdrop.addEventListener('click', toggleMenu);
+
+        // Control del menú desplegable de géneros
+        function toggleGenreMenu(e) {
+            e.stopPropagation();
+            menuGeneros.classList.toggle('show');
+        }
+
+        // Cierra el menú de géneros al hacer clic en cualquier parte
+        window.addEventListener('click', () => {
+            if (menuGeneros) menuGeneros.classList.remove('show');
+        });
+
+        function cambiarVista(vista) {
+            vistaActual = vista;
+            document.getElementById('btn-view-home').classList.toggle('active-view', vista === 'home');
+            document.getElementById('btn-view-discarded').classList.toggle('active-view', vista === 'discarded');
+            
+            // Actualizar indicador visual
+            if(vista === 'home') {
+                sectionIndicator.innerHTML = ``;
+            } else {
+                sectionIndicator.innerHTML = `🚫 Películas Descartadas <span>(Historial de papelera)</span>`;
+            }
+
+            toggleMenu();
+            renderizar(buscador.value);
+        }
+
+        function limpiarHistorialVistas() {
+            mostrarConfirm("¿Seguro que quieres borrar el historial de películas vistas?", () => {
+                removePref('pelis_vistas');
+                toggleMenu();
+                renderizar(buscador.value);
+                mostrarToast("Historial de vistas borrado", 'success');
+            });
+        }
+
+        function limpiarSeguirViendo() {
+            mostrarConfirm("¿Seguro que quieres borrar el progreso de todas las películas?", () => {
+                removePref('progreso_video');
+                toggleMenu();
+                renderizarSeguirViendo();
+                renderizar(buscador.value);
+                mostrarToast("Progreso de reproducción eliminado", 'success');
+            });
+        }
+
+        function limpiarDescartadas() {
+            mostrarConfirm("¿Seguro que quieres restaurar todas las películas descartadas?", () => {
+                removePref('pelis_descartadas');
+                toggleMenu();
+                renderizar(buscador.value);
+                mostrarToast("Películas descartadas restauradas", 'success');
+            });
+        }
+
+        // =========================================
+        // LÓGICA DE INTERACCIÓN CON TARJETAS
+        // =========================================
+        function toggleVisto(event, titulo) {
+            event.stopPropagation();
+            let vistos = getPref('pelis_vistas') || [];
+            const btn = event.currentTarget;
+            const card = btn.closest('.movie-card');
+
+            if (vistos.includes(titulo)) {
+                vistos = vistos.filter(v => v !== titulo);
+                btn.classList.remove('active');
+                card.classList.remove('is-watched');
+                // Borrar fecha de vista guardada
+                const fechasQ = getFechasVistas();
+                delete fechasQ[titulo];
+                setPref('fechas_vistas', fechasQ);
+                // Ocultar la watched-date en la card si existe
+                const wdEl = card.querySelector('.watched-date');
+                if (wdEl) wdEl.remove();
+            } else {
+                vistos.push(titulo);
+                btn.classList.add('active');
+                card.classList.add('is-watched');
+                // Guardar timestamp de visualización
+                const fechasQ = getFechasVistas();
+                fechasQ[titulo] = Date.now();
+                setPref('fechas_vistas', fechasQ);
+                // Actualizar la watched-date en la card si existe
+                const wdEl = card.querySelector('.watched-date');
+                if (wdEl) wdEl.textContent = 'Vista hoy';
+                quitarDeContinuar(null, titulo, false, false);
+                const progressBar = card.querySelector('.progress-container');
+                if (progressBar) progressBar.remove();
+            }
+            setPref('pelis_vistas', vistos);
+
+            if (mostrarSoloPendientes) {
+                setTimeout(() => { renderizar(buscador.value); }, 400);
+            }
+        }
+
+        function toggleFavorito(event, titulo) {
+            event.stopPropagation(); 
+            let favoritos = getPref('mis_favoritos') || [];
+            const btn = event.currentTarget;
+            const cardWrapper = btn.closest('.fade-in-wrapper');
+
+            if (favoritos.includes(titulo)) {
+                favoritos = favoritos.filter(f => f !== titulo);
+                btn.classList.remove('active');
+                if (soloFavoritos && cardWrapper) {
+                    cardWrapper.style.opacity = '0';
+                    cardWrapper.style.transform = 'scale(0.8)';
+                    setTimeout(() => cardWrapper.remove(), 400); 
+                }
+            } else {
+                favoritos.push(titulo);
+                btn.classList.add('active');
+            }
+            setPref('mis_favoritos', favoritos);
+        }
+
+        function toggleDescartada(event, titulo) {
+            event.stopPropagation();
+            let descartadas = getPref('pelis_descartadas') || [];
+            const btn = event.currentTarget;
+            const cardWrapper = btn.closest('.fade-in-wrapper');
+
+            if (descartadas.includes(titulo)) {
+                descartadas = descartadas.filter(d => d !== titulo);
+                btn.classList.remove('active');
+                if (vistaActual === 'discarded' && cardWrapper) {
+                    cardWrapper.style.opacity = '0';
+                    cardWrapper.style.transform = 'scale(0.8)';
+                    setTimeout(() => cardWrapper.remove(), 400);
+                }
+            } else {
+                descartadas.push(titulo);
+                btn.classList.add('active');
+                if (vistaActual === 'home' && cardWrapper) {
+                    cardWrapper.style.opacity = '0';
+                    cardWrapper.style.transform = 'scale(0.8)';
+                    setTimeout(() => cardWrapper.remove(), 400);
+                }
+                quitarDeContinuar(null, titulo, false, false);
+            }
+            setPref('pelis_descartadas', descartadas);
+        }
+
+        function quitarDeContinuar(event, titulo, confirmar = true, reRender = true) {
+            if(event) event.stopPropagation();
+            const ejecutar = () => {
+                const progresos = getPref('progreso_video') || {};
+                delete progresos[titulo];
+                setPref('progreso_video', progresos);
+                if (reRender) {
+                    renderizarSeguirViendo();
+                    renderizar(buscador.value);
+                    mostrarToast(`"${titulo}" quitada de Seguir viendo`, 'info');
+                }
+            };
+            if (!confirmar) {
+                ejecutar();
+            } else {
+                mostrarConfirm(`¿Quitar "${titulo}" de Seguir viendo?`, ejecutar);
+            }
+        }
+
+        // =========================================
+        // GENERACIÓN DE FILTROS Y SELECT
+        // =========================================
+
+        // Sincroniza el estado visual de todos los controles de filtro
+        // (desktop header + menú lateral móvil) con las variables globales.
+        function sincronizarControlesFiltro() {
+            document.getElementById('btn-favoritos')?.classList.toggle('active', soloFavoritos);
+            document.getElementById('btn-fav-mobile')?.classList.toggle('active', soloFavoritos);
+            document.getElementById('btn-ocultar-vistas')?.classList.toggle('active', mostrarSoloPendientes);
+            const btnEyeMobile = document.getElementById('btn-eye-mobile');
+            if (btnEyeMobile) {
+                btnEyeMobile.classList.toggle('eye-active', mostrarSoloPendientes);
+            }
+            // Sincronizar select de género móvil con el estado global
+            const gsMob = document.getElementById('genero-select-mobile');
+            if (gsMob) gsMob.value = generoActual;
+        }
+
+        function inicializarFiltros() {
+            // 1. Construir lista de géneros
+            const generosSet = new Set(["Todos"]);
+            if (typeof peliculas !== 'undefined') {
+                peliculas.forEach(p => { if (p.genero) generosSet.add(p.genero); });
+            }
+
+            // Función compartida para seleccionar un género desde cualquier control
+            const seleccionarGenero = (genero) => {
+                generoActual = genero;
+                sessionStorage.setItem('ultimo_genero', generoActual);
+                // Sincronizar botones del desplegable de escritorio
+                document.querySelectorAll('.genre-opt').forEach(b => {
+                    b.classList.toggle('active', b.dataset.genero === genero);
+                });
+                // Sincronizar select de géneros móvil
+                const gsMob = document.getElementById('genero-select-mobile');
+                if (gsMob) gsMob.value = genero;
+                menuGeneros.classList.remove('show');
+                if (sideMenu.classList.contains('active')) toggleMenu();
+                renderizar(buscador.value);
+            };
+
+            // Poblar desplegable de escritorio
+            menuGeneros.innerHTML = "";
+            generosSet.forEach(genero => {
+                const btn = document.createElement('button');
+                btn.className = `genre-opt ${genero === generoActual ? 'active' : ''}`;
+                btn.dataset.genero = genero;
+                btn.innerText = genero === "Todos" ? "Todos los géneros" : genero;
+                btn.onclick = () => seleccionarGenero(genero);
+                menuGeneros.appendChild(btn);
+            });
+
+            // Poblar select de géneros del menú lateral móvil
+            const generoSelectMobile = document.getElementById('genero-select-mobile');
+            if (generoSelectMobile) {
+                generoSelectMobile.innerHTML = "";
+                generosSet.forEach(genero => {
+                    const opt = document.createElement('option');
+                    opt.value = genero;
+                    opt.textContent = genero === "Todos" ? "Todos los géneros" : genero;
+                    if (genero === generoActual) opt.selected = true;
+                    generoSelectMobile.appendChild(opt);
+                });
+                generoSelectMobile.addEventListener('change', () => {
+                    seleccionarGenero(generoSelectMobile.value);
+                });
+            }
+
+            // 2. Botones de filtro — escritorio
+            const btnFav = document.getElementById('btn-favoritos');
+            btnFav?.addEventListener('click', () => {
+                soloFavoritos = !soloFavoritos;
+                sincronizarControlesFiltro();
+                renderizar(buscador.value);
+            });
+
+            const btnOcultar = document.getElementById('btn-ocultar-vistas');
+            btnOcultar?.addEventListener('click', () => {
+                mostrarSoloPendientes = !mostrarSoloPendientes;
+                sincronizarControlesFiltro();
+                btnOcultar.title = mostrarSoloPendientes
+                    ? 'Mostrando solo pendientes · clic para ver todas'
+                    : 'Mostrar solo pendientes (no vistas)';
+                renderizar(buscador.value);
+            });
+
+            // 3. Botones de filtro — menú lateral móvil
+            document.getElementById('btn-fav-mobile')?.addEventListener('click', () => {
+                soloFavoritos = !soloFavoritos;
+                sincronizarControlesFiltro();
+                renderizar(buscador.value);
+            });
+
+            document.getElementById('btn-eye-mobile')?.addEventListener('click', () => {
+                mostrarSoloPendientes = !mostrarSoloPendientes;
+                sincronizarControlesFiltro();
+                renderizar(buscador.value);
+            });
+
+            // 4. Select de orden — móvil (sincronizado con el de escritorio)
+            const selectorOrdenMobile = document.getElementById('ordenar-mobile');
+            selectorOrdenMobile?.addEventListener('change', () => {
+                selectorOrden.value = selectorOrdenMobile.value;
+                renderizar(buscador.value);
+            });
+        }
+
+        function obtenerEstrellas(rating) {
+            let estrellas = "";
+            const ratingBase5 = rating / 2;
+            for (let i = 1; i <= 5; i++) {
+                if (i <= Math.floor(ratingBase5)) estrellas += '<span>★</span>';
+                else if (i - 0.5 <= ratingBase5) estrellas += '<span>½</span>';
+                else estrellas += '<span class="star-empty">★</span>';
+            }
+            return estrellas;
+        }
+
+        function renderizarSeguirViendo() {
+            const contenedorContinuar = document.getElementById('contenedor-continuar');
+            const seccionContinuar = document.getElementById('section-continue');
+            const progresos = getPref('progreso_video') || {};
+            contenedorContinuar.innerHTML = "";
+            
+            if (vistaActual === 'home' && generoActual === "Todos" && buscador.value === "" && !mostrarSoloPendientes && !soloFavoritos) {
+                const pendientes = peliculas.filter(p => (progresos[p.titulo]?.tiempo || 0) > 60);
+                if (pendientes.length > 0) {
+                    seccionContinuar.style.display = "block";
+                    pendientes.forEach(peli => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'fade-in-wrapper';
+                        const infoProgreso = progresos[peli.titulo];
+                        const progresoSegundos = infoProgreso.tiempo;
+                        const duracionTotal = infoProgreso.duracion || 7200; 
+                        const porcentaje = Math.min((progresoSegundos / duracionTotal) * 100, 100);
+                        const minutosRestantes = Math.max(Math.ceil((duracionTotal - progresoSegundos) / 60), 0);
+
+                        wrapper.innerHTML = `
+                            <div class="movie-card horizontal">
+                                <div class="time-left-tag">Faltan ${minutosRestantes} min</div>
+                                <div class="remove-btn" title="Quitar de la lista" onclick="quitarDeContinuar(event, '${peli.titulo.replace(/'/g, "\\'")}')">
+                                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                </div>
+                                <img src="peliculas/${peli.carpeta}/${peli.caratula}">
+                                <div class="progress-container"><div class="progress-bar" style="width: ${porcentaje}%"></div></div>
+                                <div class="overlay">
+                                    <h3 style="font-size: 0.95rem;">${peli.titulo}</h3>
+                                    <a href="detalle.html?peli=${encodeURIComponent(peli.titulo)}" class="btn-play">CONTINUAR</a>
+                                </div>
+                            </div>
+                        `;
+                        contenedorContinuar.appendChild(wrapper);
+                    });
+                } else seccionContinuar.style.display = "none";
+            } else seccionContinuar.style.display = "none";
+        }
+
+        // =========================================
+        // PODRÍA INTERESARTE
+        // =========================================
+
+        /**
+         * Calcula los géneros preferidos del usuario ponderando:
+         *  - Favorito  → 2 puntos por película
+         *  - Solo vista → 1 punto por película
+         * Devuelve un array de géneros ordenados de mayor a menor puntuación.
+         */
+        function calcularGenerosPreferidos() {
+            const favoritos   = getPref('mis_favoritos')  || [];
+            const vistos      = getPref('pelis_vistas')    || [];
+            const puntuaciones = {};
+
+            peliculas.forEach(p => {
+                if (!p.genero) return;
+                if (favoritos.includes(p.titulo)) puntuaciones[p.genero] = (puntuaciones[p.genero] || 0) + 2;
+                if (vistos.includes(p.titulo))    puntuaciones[p.genero] = (puntuaciones[p.genero] || 0) + 1;
+            });
+
+            return Object.entries(puntuaciones)
+                .sort((a, b) => b[1] - a[1])
+                .map(e => e[0]);
+        }
+
+        function renderizarPodriaInteresarte() {
+            const seccionSuggest   = document.getElementById('section-suggest');
+            const contenedorSuggest = document.getElementById('contenedor-suggest');
+            const subtitulo        = document.getElementById('suggest-subtitle');
+            if (!seccionSuggest) return;
+
+            // Solo visible en vista home sin filtros activos
+            const sinFiltros = vistaActual === 'home' && generoActual === 'Todos' &&
+                               buscador.value === '' && !soloFavoritos && !mostrarSoloPendientes;
+            if (!sinFiltros) { seccionSuggest.style.display = 'none'; return; }
+
+            const generosOrdenados = calcularGenerosPreferidos();
+            if (generosOrdenados.length === 0) { seccionSuggest.style.display = 'none'; return; }
+
+            const favoritos    = getPref('mis_favoritos')    || [];
+            const vistos       = getPref('pelis_vistas')      || [];
+            const descartadas  = getPref('pelis_descartadas') || [];
+            const progresos    = getPref('progreso_video')    || {};
+
+            // Excluir: vistas, descartadas y las que están en "Seguir viendo"
+            const enCurso = new Set(peliculas.filter(p => (progresos[p.titulo]?.tiempo || 0) > 60).map(p => p.titulo));
+            const excluir = new Set([...vistos, ...descartadas, ...enCurso]);
+
+            // Recoger hasta MAX_SUGERENCIAS películas por género preferido
+            const MAX_SUGERENCIAS = 10;
+            const sugeridas = [];
+            const titulosYa = new Set();
+
+            for (const genero of generosOrdenados) {
+                if (sugeridas.length >= MAX_SUGERENCIAS) break;
+                const candidatas = peliculas.filter(p =>
+                    p.genero === genero && !excluir.has(p.titulo) && !titulosYa.has(p.titulo)
+                );
+                // Ordenar candidatas por puntuación descendente para sugerir lo mejor primero
+                candidatas.sort((a, b) => (b.puntuacion || 0) - (a.puntuacion || 0));
+                for (const c of candidatas) {
+                    if (sugeridas.length >= MAX_SUGERENCIAS) break;
+                    sugeridas.push(c);
+                    titulosYa.add(c.titulo);
+                }
+            }
+
+            if (sugeridas.length === 0) { seccionSuggest.style.display = 'none'; return; }
+
+            // Actualizar subtítulo con los géneros que guían las sugerencias
+            const topGeneros = generosOrdenados.slice(0, 3).join(', ');
+            if (subtitulo) subtitulo.textContent = `Basado en tus géneros favoritos: ${topGeneros}`;
+
+            seccionSuggest.style.display = 'block';
+            contenedorSuggest.innerHTML = '';
+
+            sugeridas.forEach((peli, index) => {
+                const esFav  = favoritos.includes(peli.titulo);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'fade-in-wrapper';
+                wrapper.style.animationDelay = `${index * 0.05}s`;
+                wrapper.innerHTML = `
+                    <div class="movie-card horizontal">
+                        <div class="fav-btn ${esFav ? 'active' : ''}" title="Favorito"
+                             onclick="toggleFavorito(event, '${peli.titulo.replace(/'/g, "\\'")}')">
+                            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
+                        <img src="peliculas/${peli.carpeta}/${peli.caratula}" alt="Carátula de ${peli.titulo}" loading="lazy">
+                        <div class="genre-tag">${peli.genero}</div>
+                        <div class="overlay">
+                            <span class="year-tag">${peli.anio || 'S/A'}</span>
+                            <div class="movie-meta">
+                                <div class="stars-container">${obtenerEstrellas(peli.puntuacion || 0)}</div>
+                            </div>
+                            <h3>${peli.titulo}</h3>
+                            <p>${peli.descripcion || ''}</p>
+                            <a href="detalle.html?peli=${encodeURIComponent(peli.titulo)}" class="btn-play">VER AHORA</a>
+                        </div>
+                    </div>
+                `;
+                contenedorSuggest.appendChild(wrapper);
+            });
+        }
+
+        // =========================================
+        // MOTOR DE CARGA PRINCIPAL
+        // =========================================
+        function cargarMasPeliculas() {
+            if (cargando) return;
+            cargando = true;
+
+            const inicio = (paginaActual - 1) * pelisPorPagina;
+            const fin = inicio + pelisPorPagina;
+            const bloque = peliculasFiltradasGlobal.slice(inicio, fin);
+
+            if (bloque.length === 0) { cargando = false; return; }
+
+            let favoritos = getPref('mis_favoritos') || [];
+            let vistos = getPref('pelis_vistas') || [];
+            let descartadas = getPref('pelis_descartadas') || [];
+            // Leemos progreso_video UNA SOLA VEZ fuera del bucle para evitar parsear JSON repetidamente
+            const progresos = getPref('progreso_video') || {};
+            const valoraciones = getValoraciones();
+            const fechasVistas = getFechasVistas();
+
+            bloque.forEach((peli, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'fade-in-wrapper';
+                wrapper.style.animationDelay = `${index * 0.05}s`;
+
+                const esFav = favoritos.includes(peli.titulo);
+                const esVisto = vistos.includes(peli.titulo);
+                const esDesc = descartadas.includes(peli.titulo);
+                const htmlEstrellas = obtenerEstrellas(peli.puntuacion || 0);
+
+                const datosPeli = progresos[peli.titulo] || {};
+                const progresoSegundos = datosPeli.tiempo || 0;
+                const duracionTotal = datosPeli.duracion || 7200;
+                const porcentaje = Math.min((progresoSegundos / duracionTotal) * 100, 100);
+                const tieneProgreso = progresoSegundos > 60;
+
+                // Duración real (solo si se capturó en detalle.html)
+                const durTag = datosPeli.duracion ? formatDuracion(datosPeli.duracion) : null;
+                // Fecha de última visualización
+                const fechaTs = fechasVistas[peli.titulo];
+                const fechaTag = esVisto && fechaTs ? formatFechaRelativa(fechaTs) : null;
+                // Valoración personal (1-5 estrellas)
+                const valUsr = valoraciones[peli.titulo] || 0;
+                const starsHtml = `<div class="user-rating">${[1,2,3,4,5].map(i =>
+                    `<span class="user-rating-star${valUsr >= i ? ' active' : ''}" onclick="toggleRatingCard(event,'${peli.titulo.replace(/'/g,"\\'")}',${i})">★</span>`
+                ).join('')}</div>`;
+
+                wrapper.innerHTML = `
+                    <div class="movie-card ${esVisto ? 'is-watched' : ''}">
+                        <div class="discard-btn ${esDesc ? 'active' : ''}" title="Descartar" onclick="toggleDescartada(event, '${peli.titulo.replace(/'/g, "\\'")}')">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </div>
+                        <div class="watched-btn ${esVisto ? 'active' : ''}" title="Marcar como vista" onclick="toggleVisto(event, '${peli.titulo.replace(/'/g, "\\'")}')">
+                            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </div>
+                        <div class="fav-btn ${esFav ? 'active' : ''}" title="Favorito" onclick="toggleFavorito(event, '${peli.titulo.replace(/'/g, "\\'")}')">
+                            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
+                        <img src="peliculas/${peli.carpeta}/${peli.caratula}" alt="Carátula de ${peli.titulo}" loading="lazy">
+                        
+                        ${tieneProgreso ? `
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: ${porcentaje}%"></div>
+                            </div>
+                        ` : ''}
+
+                        <div class="overlay">
+                            <span class="year-tag">${peli.anio || 'S/A'}</span>${durTag ? `<span class="duration-tag">${durTag}</span>` : ''}
+                            <div class="movie-meta">
+                                <div class="stars-container">${htmlEstrellas}</div>
+                            </div>
+                            ${fechaTag ? `<div class="watched-date">${fechaTag}</div>` : ''}
+                            ${starsHtml}
+                            <h3>${peli.titulo}</h3>
+                            <p>${peli.descripcion || peli.description || ''}</p>
+                            <a href="detalle.html?peli=${encodeURIComponent(peli.titulo)}" class="btn-play">
+                                ${tieneProgreso ? 'CONTINUAR' : 'VER AHORA'}
+                            </a>
+                        </div>
+                    </div>
+                `;
+                contenedor.appendChild(wrapper);
+            });
+
+            paginaActual++;
+            setTimeout(() => { 
+                cargando = false; 
+                if (document.documentElement.scrollHeight <= window.innerHeight) cargarMasPeliculas();
+            }, 300);
+        }
+
+        function hayFiltrosActivos(busqueda) {
+            return busqueda !== "" || generoActual !== "Todos" || soloFavoritos || mostrarSoloPendientes;
+        }
+
+        function actualizarEstadoBanner(busqueda) {
+            const btnClear = document.getElementById('btn-clear-search');
+            if (hayFiltrosActivos(busqueda)) {
+                ocultarBanner();
+                if (btnClear) btnClear.classList.add('visible');
+            } else {
+                mostrarBanner();
+                if (btnClear) btnClear.classList.remove('visible');
+            }
+        }
+
+        function renderizar(busqueda = "") {
+            renderizarSeguirViendo();
+            renderizarPodriaInteresarte();
+            contenedor.innerHTML = "";
+            paginaActual = 1;
+            window.scrollTo(0,0);
+
+            actualizarEstadoBanner(busqueda);
+
+            let favoritos = getPref('mis_favoritos') || [];
+            let vistos = getPref('pelis_vistas') || [];
+            let descartadas = getPref('pelis_descartadas') || [];
+
+            let filtradas = peliculas.filter(p => {
+                const termino = busqueda.toLowerCase();
+                const coincideBusqueda = busqueda === "" ||
+                    p.titulo.toLowerCase().includes(termino) ||
+                    (p.genero && p.genero.toLowerCase().includes(termino)) ||
+                    (p.anio && String(p.anio).includes(termino)) ||
+                    (p.descripcion && p.descripcion.toLowerCase().includes(termino));
+                const coincideGenero = (generoActual === "Todos" || p.genero === generoActual);
+                const coincideFav = soloFavoritos ? favoritos.includes(p.titulo) : true;
+                const coincidePendiente = mostrarSoloPendientes ? !vistos.includes(p.titulo) : true;
+                
+                const estaDescartada = descartadas.includes(p.titulo);
+                const coincideVista = vistaActual === 'home' ? !estaDescartada : estaDescartada;
+
+                return coincideBusqueda && coincideGenero && coincideFav && coincidePendiente && coincideVista;
+            });
+
+            if (filtradas.length === 0) {
+                const mensajeVacio = document.createElement('div');
+                mensajeVacio.style.cssText = `grid-column: 1 / -1; text-align: center; padding: 100px 20px; color: #666;`;
+                mensajeVacio.innerHTML = `<h2>Sin resultados</h2><p>No hay películas para mostrar aquí.</p>`;
+                contenedor.appendChild(mensajeVacio);
+            }
+
+            document.getElementById('contador-texto').innerHTML = `Mostrando <b>${filtradas.length}</b> de <b>${peliculas.length}</b> películas`;
+
+            const metodoOrden = selectorOrden.value;
+            if (metodoOrden === "az") filtradas.sort((a, b) => a.titulo.localeCompare(b.titulo));
+            else if (metodoOrden === "puntuacion") filtradas.sort((a, b) => (b.puntuacion || 0) - (a.puntuacion || 0));
+            else if (metodoOrden === "anio") filtradas.sort((a, b) => (b.anio || 0) - (a.anio || 0));
+
+            peliculasFiltradasGlobal = filtradas;
+            cargarMasPeliculas();
+        }
+
+        window.addEventListener('scroll', () => {
+            btnTop.style.display = window.scrollY > 600 ? "flex" : "none";
+            const scrollPos = window.innerHeight + window.pageYOffset;
+            const totalHeight = document.documentElement.scrollHeight;
+            if (!cargando && (scrollPos >= totalHeight - 900)) {
+                if ((paginaActual - 1) * pelisPorPagina < peliculasFiltradasGlobal.length) cargarMasPeliculas();
+            }
+        });
+
+        buscador.addEventListener('input', (e) => renderizar(e.target.value));
+
+        // Botón ✕: limpia texto del buscador y resetea todos los filtros
+        document.getElementById('btn-clear-search').addEventListener('click', () => {
+            buscador.value = '';
+            generoActual = 'Todos';
+            soloFavoritos = false;
+            mostrarSoloPendientes = false;
+            sincronizarControlesFiltro();
+            renderizar('');
+        });
+
+        selectorOrden.addEventListener('change', () => {
+            const mob = document.getElementById('ordenar-mobile');
+            if (mob) mob.value = selectorOrden.value;
+            renderizar(buscador.value);
+        });
+
+        // =========================================
+        // LÓGICA DEL BANNER CARRUSEL (NUEVA INTEGRACIÓN)
+        // =========================================
+        let bannerTimer;
+        let slideActual = 0;
+        let totalSlides = 0;
+        const bannerIntervalo = 20000;
+        let videoMuted = true; // Estado del sonido
+
+        function inicializarcarruselBanner() {
+            if (typeof peliculas === 'undefined' || peliculas.length === 0) return;
+
+            // Obtener las 5 más recientes
+            const recientes = [...peliculas].sort((a, b) => b.anio - a.anio).slice(0, 5);
+            totalSlides = recientes.length;
+
+            const contenedorSlides = document.getElementById('banner-slides-contenedor');
+            const contenedorDots = document.getElementById('carrusel-dots');
+
+            recientes.forEach((peli, index) => {
+                const rutaBase = `peliculas/${peli.carpeta}/`;
+                const urlImagen = encodeURI(`${rutaBase}${peli.caratula}`);
+                const videoFile = peli.archivo || 'video.mp4';
+                const urlVideo = encodeURI(`${rutaBase}${videoFile}`);
+                const starsHtml = obtenerEstrellas(peli.puntuacion || 0);
+
+                // Diapositiva con la nueva estructura y overlay dentro del slide para el correcto z-index
+                const slide = document.createElement('div');
+                slide.className = `banner-slide ${index === 0 ? 'active' : ''}`;
+                slide.dataset.index = index;
+                /* <img class="banner-bg-img" src="${urlImagen}" alt="${peli.titulo}" loading="lazy"> */
+                slide.innerHTML = `
+                    <video class="banner-bg-video" loop muted playsinline preload="none" data-src="${urlVideo}"></video>
+                    
+                    <div class="banner-overlay"></div>
+
+                    <div class="banner-content">
+                        <div class="banner-top">
+                            <h2>${peli.titulo}</h2>
+                        </div>
+                        
+                        <div class="banner-bottom">
+                            <div class="banner-meta-info">
+                                <span>${peli.anio}</span> • 
+                                <span style="background:var(--primary); padding:2px 8px; border-radius:4px; font-size:0.8rem;">${peli.genero}</span>
+                                <div class="stars-container" style="margin:0;">${starsHtml}</div>
+                            </div>
+                            <p class="banner-desc">${peli.descripcion}</p>
+                            <a href="detalle.html?peli=${encodeURIComponent(peli.titulo)}" class="banner-btn">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="black" style="margin-right:5px;"><path d="M8 5v14l11-7z"/></svg> VER AHORA
+                            </a>
+                        </div>
+                    </div>
+                `;
+                contenedorSlides.appendChild(slide);
+
+                const dot = document.createElement('div');
+                dot.className = `carrusel-dot ${index === 0 ? 'active' : ''}`;
+                dot.onclick = () => irASlideManual(index);
+                contenedorDots.appendChild(dot);
+            });
+
+            gestionarVideoSlide(0);
+            iniciarTimer();
+        }
+
+        const SVG_MUTED   = `<svg viewBox="0 0 24 24"><path fill="white" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
+        const SVG_UNMUTED = `<svg viewBox="0 0 24 24"><path fill="white" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+
+        function toggleMuteBanner() {
+            videoMuted = !videoMuted;
+            const btn = document.getElementById('banner-mute-btn');
+            btn.innerHTML = videoMuted ? SVG_MUTED : SVG_UNMUTED;
+
+            // Aplicar mute al video de la slide activa
+            const slideActiva = document.querySelector(`.banner-slide.active`);
+            if (slideActiva) {
+                const video = slideActiva.querySelector('video');
+                if (video) video.muted = videoMuted;
+            }
+        }
+
+        function gestionarVideoSlide(index) {
+            const todosVideos = document.querySelectorAll('.banner-slide video');
+            todosVideos.forEach(v => { v.pause(); v.currentTime = 0; });
+
+            const slideActiva = document.querySelector(`.banner-slide[data-index="${index}"]`);
+            if (slideActiva) {
+                const video = slideActiva.querySelector('video');
+                
+                // Asegurar que respete el estado actual del mute
+                video.muted = videoMuted; 
+
+                if (!video.src && video.dataset.src) {
+                    video.src = video.dataset.src;
+                    video.load();
+                }
+
+                video.onloadedmetadata = () => {
+                    if (video.duration > 20) {
+                        const inicioAleatorio = Math.random() * (video.duration * 0.7) + (video.duration * 0.1);
+                        video.currentTime = inicioAleatorio;
+                    }
+                    video.play().catch(() => {});
+                };
+
+                if (video.readyState >= 1) video.onloadedmetadata();
+            }
+        }
+
+        function mostrarSlide(index) {
+            if (index < 0) index = totalSlides - 1;
+            if (index >= totalSlides) index = 0;
+            slideActual = index;
+
+            const slides = document.querySelectorAll('.banner-slide');
+            slides.forEach(s => s.classList.remove('active'));
+            slides[slideActual].classList.add('active');
+
+            const dots = document.querySelectorAll('.carrusel-dot');
+            dots.forEach(d => d.classList.remove('active'));
+            dots[slideActual].classList.add('active');
+
+            gestionarVideoSlide(slideActual);
+        }
+
+        function siguienteSlide() { mostrarSlide(slideActual + 1); reiniciarTimer(); }
+        function anteriorSlide() { mostrarSlide(slideActual - 1); reiniciarTimer(); }
+        function irASlideManual(index) { mostrarSlide(index); reiniciarTimer(); }
+
+        function iniciarTimer() {
+            if (bannerTimer) clearInterval(bannerTimer);
+            bannerTimer = setInterval(siguienteSlide, bannerIntervalo);
+        }
+
+        function reiniciarTimer() {
+            clearInterval(bannerTimer);
+            iniciarTimer();
+        }
+
+        function ocultarBanner() {
+            const banner = document.getElementById('banner-carrusel');
+            if (!banner || banner.classList.contains('banner-oculto')) return;
+            banner.classList.add('banner-oculto');
+            clearInterval(bannerTimer);
+            // Pausar todos los vídeos del banner
+            banner.querySelectorAll('video').forEach(v => { v.pause(); });
+        }
+
+        function mostrarBanner() {
+            const banner = document.getElementById('banner-carrusel');
+            if (!banner || !banner.classList.contains('banner-oculto')) return;
+            banner.classList.remove('banner-oculto');
+            iniciarTimer();
+            // Reanudar vídeo del slide actual
+            const videoActivo = banner.querySelector('.banner-slide.active video');
+            if (videoActivo) videoActivo.play().catch(() => {});
+        }
+
+        // =========================================
+        // DURACIÓN · FECHA VISTA · VALORACIÓN PERSONAL
+        // =========================================
+
+        function formatDuracion(segundos) {
+            if (!segundos || segundos <= 0) return null;
+            const h = Math.floor(segundos / 3600);
+            const m = Math.floor((segundos % 3600) / 60);
+            return h > 0 ? `${h}h ${m}min` : `${m}min`;
+        }
+
+        function formatFechaRelativa(ts) {
+            if (!ts) return null;
+            const dias = Math.floor((Date.now() - ts) / 86400000);
+            if (dias === 0) return 'Vista hoy';
+            if (dias === 1) return 'Vista ayer';
+            if (dias < 7)  return `Vista hace ${dias} días`;
+            if (dias < 30) return `Vista hace ${Math.floor(dias / 7)} sem.`;
+            if (dias < 365) {
+                const m = Math.floor(dias / 30);
+                return `Vista hace ${m} ${m === 1 ? 'mes' : 'meses'}`;
+            }
+            const a = Math.floor(dias / 365);
+            return `Vista hace ${a} ${a === 1 ? 'año' : 'años'}`;
+        }
+
+        function getValoraciones()       { return getPref('valoraciones_usuario') || {}; }
+        function getFechasVistas()        { return getPref('fechas_vistas') || {}; }
+
+        function setValoracion(titulo, estrellas) {
+            const vals = getValoraciones();
+            if (estrellas === 0) { delete vals[titulo]; } else { vals[titulo] = estrellas; }
+            setPref('valoraciones_usuario', vals);
+        }
+
+        function toggleRatingCard(event, titulo, estrellas) {
+            event.stopPropagation();
+            const vals = getValoraciones();
+            const actual = vals[titulo] || 0;
+            const nueva = (actual === estrellas) ? 0 : estrellas;
+            setValoracion(titulo, nueva);
+            const card = event.currentTarget.closest('.movie-card');
+            if (card) {
+                card.querySelectorAll('.user-rating-star').forEach((s, i) => {
+                    s.classList.toggle('active', i < nueva);
+                });
+            }
+        }
+
+        // =========================================
+        // ESTADÍSTICAS PERSONALES
+        // =========================================
+
+        function calcularEstadisticas() {
+            const vistos      = getPref('pelis_vistas') || [];
+            const favoritos   = getPref('mis_favoritos') || [];
+            const descartadas = getPref('pelis_descartadas') || [];
+            const valoraciones = getValoraciones();
+            const progresos   = getPref('progreso_video') || {};
+            const fechas      = getFechasVistas();
+
+            const generosVistos = {};
+            vistos.forEach(titulo => {
+                const peli = peliculas.find(p => p.titulo === titulo);
+                if (!peli) return;
+                const gs = peli.generos || (peli.genero ? [peli.genero] : []);
+                gs.forEach(g => { generosVistos[g] = (generosVistos[g] || 0) + 1; });
+            });
+
+            const vals = Object.values(valoraciones);
+            const promedio = vals.length > 0
+                ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
+                : '-';
+
+            let tiempoTotal = 0;
+            vistos.forEach(titulo => {
+                const d = progresos[titulo];
+                if (d && d.duracion) tiempoTotal += d.duracion;
+            });
+
+            let ultimaFecha = null;
+            Object.values(fechas).forEach(ts => {
+                if (!ultimaFecha || ts > ultimaFecha) ultimaFecha = ts;
+            });
+
+            return { vistos: vistos.length, favoritos: favoritos.length, descartadas: descartadas.length,
+                     valoraciones: vals.length, promedio, tiempoTotal, ultimaFecha, generosVistos };
+        }
+
+        function mostrarEstadisticas() {
+            toggleMenu();
+            const stats   = calcularEstadisticas();
+            const uid     = getUsuarioActivo();
+            const usuario = getUsuarios().find(u => u.id === uid);
+
+            document.getElementById('stats-user-sub').textContent =
+                usuario ? `Perfil: ${usuario.nombre}` : '';
+
+            const h = Math.floor(stats.tiempoTotal / 3600);
+            const m = Math.floor((stats.tiempoTotal % 3600) / 60);
+            const tiempoStr = h > 0 ? `${h}h ${m}min` : (m > 0 ? `${m}min` : '—');
+
+            const ultimaTxt = stats.ultimaFecha
+                ? formatFechaRelativa(stats.ultimaFecha).replace('Vista ', '')
+                : '—';
+
+            document.getElementById('stats-grid').innerHTML = `
+                <div class="stats-card"><div class="stats-num">${stats.vistos}</div><div class="stats-label">Vistas</div></div>
+                <div class="stats-card"><div class="stats-num">${stats.favoritos}</div><div class="stats-label">Favoritas</div></div>
+                <div class="stats-card"><div class="stats-num">${stats.valoraciones}</div><div class="stats-label">Valoradas</div></div>
+                <div class="stats-card"><div class="stats-num">${stats.promedio}</div><div class="stats-label">Media ★</div></div>
+                <div class="stats-card"><div class="stats-num">${tiempoStr}</div><div class="stats-label">En pantalla</div></div>
+                <div class="stats-card"><div class="stats-num" style="font-size:1rem">${ultimaTxt}</div><div class="stats-label">Última vista</div></div>
+            `;
+
+            const sorted = Object.entries(stats.generosVistos)
+                .sort((a, b) => b[1] - a[1]).slice(0, 6);
+            const maxG = sorted.length > 0 ? sorted[0][1] : 1;
+            document.getElementById('stats-genres').innerHTML = sorted.map(([g, n]) => `
+                <div class="stats-genre-row">
+                    <span class="stats-genre-name">${g}</span>
+                    <div class="stats-genre-bar-wrap"><div class="stats-genre-bar-fill" style="width:${Math.round((n/maxG)*100)}%"></div></div>
+                    <span class="stats-genre-count">${n}</span>
+                </div>`).join('');
+
+            document.getElementById('stats-modal').classList.add('active');
+        }
+
+        // =========================================
+        // EXPORTAR / IMPORTAR PREFERENCIAS
+        // =========================================
+
+        function exportarPreferencias() {
+            toggleMenu();
+            const uid     = getUsuarioActivo();
+            const usuario = getUsuarios().find(u => u.id === uid);
+            const data = {
+                version: 1,
+                exportado: new Date().toISOString(),
+                usuario: usuario ? { nombre: usuario.nombre } : null,
+                preferencias: {
+                    mis_favoritos:       getPref('mis_favoritos') || [],
+                    pelis_vistas:        getPref('pelis_vistas') || [],
+                    pelis_descartadas:   getPref('pelis_descartadas') || [],
+                    valoraciones_usuario: getValoraciones(),
+                    fechas_vistas:       getFechasVistas()
+                }
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `cinelocal_${usuario ? usuario.nombre.toLowerCase().replace(/\s+/g,'_') : 'datos'}_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importarPreferencias(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.preferencias) throw new Error('Formato inválido');
+                    mostrarConfirm('¿Importar datos? Esto reemplazará tus preferencias actuales.', () => {
+                        const p = data.preferencias;
+                        if (p.mis_favoritos)        setPref('mis_favoritos', p.mis_favoritos);
+                        if (p.pelis_vistas)         setPref('pelis_vistas', p.pelis_vistas);
+                        if (p.pelis_descartadas)    setPref('pelis_descartadas', p.pelis_descartadas);
+                        if (p.valoraciones_usuario) setPref('valoraciones_usuario', p.valoraciones_usuario);
+                        if (p.fechas_vistas)        setPref('fechas_vistas', p.fechas_vistas);
+                        renderizar(buscador.value);
+                    });
+                } catch { alert('Error al importar: el archivo no es válido.'); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // =========================================
+        // NAVEGACIÓN POR TECLADO EN EL CARRUSEL
+        // =========================================
+        document.addEventListener('keydown', (e) => {
+            // No actuar si el usuario está escribiendo en el buscador
+            if (document.activeElement === buscador) return;
+            if (e.key === 'ArrowLeft')  anteriorSlide();
+            if (e.key === 'ArrowRight') siguienteSlide();
+        });
+
+        // =========================================
+        // INICIALIZACIÓN
+        // =========================================
+        inicializarFiltros();
+        renderizar();
+        inicializarcarruselBanner();
+
+        // Verificar usuario activo al arrancar
+        (function verificarUsuario() {
+            const uid      = getUsuarioActivo();
+            const usuarios = getUsuarios();
+            if (uid && usuarios.find(u => u.id === uid)) {
+                // Usuario válido → mostrar su nombre y ocultar overlay
+                actualizarMenuUsuario(uid);
+                document.getElementById('user-overlay').style.display = 'none';
+            } else {
+                // Sin usuario → mostrar pantalla de selección
+                localStorage.removeItem('cinelocal_usuario_activo');
+                mostrarPantallaUsuarios();
+            }
+        })();
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log("Service Worker registrado correctamente"))
+          .catch((err) => console.log("Error al registrar SW", err));
+      }
+    </script>
+</body>
+</html>

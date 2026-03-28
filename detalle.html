@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizando Película</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#e50914">
+    <link rel="apple-touch-icon" href="icono-512.png">
+    <style>
+        :root { --primary: #e50914; --bg: #050505; }
+        
+        body {
+            margin: 0; padding: 0; font-family: 'Inter', sans-serif;
+            background: var(--bg); color: white; 
+            min-height: 100vh;
+            /* CAMBIO: Permitimos scroll vertical si el texto es largo en móviles */
+            overflow-x: hidden;
+            overflow-y: auto; 
+        }
+
+        .hero {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            z-index: -1;
+            transition: background-image 1s ease-in-out;
+        }
+
+        #bg-video-full {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .hero::after {
+            content: ''; 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%;
+            /* NUEVO DEGRADADO: Más limpio en el centro */
+            background: linear-gradient(
+                0deg, 
+                rgba(0,0,0,0.9) 0%,    /* Muy oscuro abajo para leer descripción */
+                rgba(0,0,0,0) 20%,     /* Se vuelve transparente rápido (al 20%) */
+                rgba(0,0,0,0) 80%,     /* Se mantiene transparente hasta casi el final */
+                rgba(0,0,0,0.7) 100%   /* Oscurece un poco arriba para el botón Volver */
+            );
+            z-index: 1;
+        }
+
+
+
+        .content {
+            position: relative; z-index: 2;
+            /* CAMBIO: min-height en lugar de height fijo para que crezca con el contenido */
+            min-height: 100vh; 
+            display: flex; flex-direction: column; 
+            justify-content: space-between; 
+            padding: 100px 8% 60px; /* Más espacio arriba para el botón Volver */
+            box-sizing: border-box;
+        }
+
+        .top-info h1 { 
+            font-size: clamp(2.5rem, 8vw, 4rem); 
+            margin: 0; font-weight: 900; line-height: 0.95; 
+            text-transform: uppercase; max-width: 95%;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .top-info h1.titulo-largo {
+            font-size: clamp(1.8rem, 5vw, 3.2rem);
+            line-height: 1.1;
+        }
+
+        .bottom-info {
+            display: flex; 
+            align-items: flex-end; 
+            gap: 50px; 
+            width: 100%;
+            margin-top: 40px;
+        }
+
+        .action-buttons {
+            display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; width: 280px;
+        }
+
+        .description-side { flex-grow: 1; }
+        .description { font-size: 1.1rem; line-height: 1.6; color: #ccc; margin: 0; }
+        .meta { margin-bottom: 12px; font-size: 1.1rem; color: #fff; font-weight: bold; }
+
+        .play-button {
+            background: white; color: black; border: none; padding: 16px; 
+            border-radius: 4px; font-size: 1.1rem; font-weight: 900; 
+            cursor: pointer; transition: 0.3s; text-transform: uppercase;
+        }
+        .play-button:hover { background: var(--primary); color: white; transform: scale(1.02); }
+
+        .btn-fav-detail, .btn-visto-detail, .btn-desc-detail {
+            background: rgba(255,255,255,0.1); color: white;
+            border: 1px solid rgba(255,255,255,0.3); padding: 14px;
+            border-radius: 4px; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: 0.3s; text-transform: uppercase; width: 100%;
+        }
+        .btn-fav-detail:hover, .btn-visto-detail:hover, .btn-desc-detail:hover {
+            background: rgba(255,255,255,0.18);
+        }
+        .btn-fav-detail.active  { background: rgba(229,9,20,0.2);   border-color: var(--primary); color: var(--primary); }
+        .btn-visto-detail.active { background: rgba(70,211,105,0.2); border-color: #46d369;        color: #46d369; }
+        .btn-desc-detail.active  { background: rgba(244,67,54,0.2);  border-color: #f44336;        color: #f44336; }
+
+        .btn-row { display: flex; gap: 10px; }
+        .btn-row button { flex: 1; }
+
+        .stars-container { color: #ffc107; font-size: 1.3rem; margin-top: 10px; }
+
+        /* Valoración personal en detalle */
+        .user-rating-detail {
+            display: flex; align-items: center; gap: 4px;
+            margin-top: 6px; margin-bottom: 4px;
+        }
+        .user-rating-detail-label {
+            font-size: 0.78rem; color: #666; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .user-rating-detail-star {
+            font-size: 1.4rem; cursor: pointer; color: #333; transition: color 0.15s, transform 0.1s;
+        }
+        .user-rating-detail-star.active { color: #f5c518; }
+        .user-rating-detail-star:hover { color: #f5c518; transform: scale(1.2); }
+
+        .back-link { 
+            position: absolute; top: 35px; left: 8%; 
+            color: #aaa; text-decoration: none; font-weight: bold; 
+            z-index: 10; font-size: 0.9rem; 
+            transition: 0.3s;
+        }
+        .back-link:hover { color: white; }
+        
+        .mute-control { 
+            position: fixed; bottom: 40px; right: 40px; background: rgba(0,0,0,0.6); 
+            border: 1px solid rgba(255,255,255,0.2); color: white; width: 50px; height: 50px; 
+            border-radius: 50%; cursor: pointer; z-index: 100; display: none; 
+            align-items: center; justify-content: center; 
+        }
+
+        #video-container { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: black; display: none; z-index: 1000; 
+        }
+
+        #main-player { 
+            width: 100%; height: 100%; object-fit: contain;
+        }
+
+        /* --- NUEVO: MEDIA QUERIES PARA RESPONSIVE --- */
+        @media (max-width: 900px) {
+            .bottom-info {
+                flex-direction: column-reverse; /* Descripción arriba de los botones */
+                align-items: stretch; /* Que ocupen todo el ancho */
+                gap: 30px;
+            }
+
+            .action-buttons {
+                width: 100%; /* Botones a ancho completo */
+            }
+
+            .description-side {
+                width: 100%;
+            }
+
+            .content {
+                justify-content: flex-start; /* Todo seguido hacia abajo */
+                gap: 40px;
+            }
+
+            .top-info h1 {
+                font-size: clamp(2rem, 10vw, 3.5rem);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content { padding: 90px 6% 40px; }
+            .description { font-size: 1rem; }
+            .mute-control { bottom: 20px; right: 20px; width: 40px; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="hero-bg" class="hero">
+        <video id="bg-video-full" muted loop playsinline></video>
+    </div>
+    
+    <a href="index.html" class="back-link">← VOLVER AL CATÁLOGO</a>
+
+    <div class="content" id="movie-details"></div>
+
+    <button id="mute-btn" class="mute-control" onclick="toggleMute()">
+        <span id="mute-icon">🔇</span>
+    </button>
+
+    <div id="video-container">
+        <video id="main-player" controls preload="auto">
+            <source id="video-source" src="" type="video/mp4">
+        </video>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+        // ── Helpers multi-usuario (mismo contrato que index.html) ──
+        function getUsuarioActivo() { return localStorage.getItem('cinelocal_usuario_activo'); }
+        function getPref(clave, porDefecto = null) {
+            const uid = getUsuarioActivo();
+            if (!uid) return porDefecto;
+            const raw = localStorage.getItem(`u_${uid}_${clave}`);
+            if (raw === null) return porDefecto;
+            try { return JSON.parse(raw); } catch { return porDefecto; }
+        }
+        function setPref(clave, valor) {
+            const uid = getUsuarioActivo();
+            if (uid) localStorage.setItem(`u_${uid}_${clave}`, JSON.stringify(valor));
+        }
+
+        // Si no hay usuario activo, redirigir a la portada
+        if (!getUsuarioActivo()) { window.location.replace('index.html'); }
+
+        function getValoraciones() { return getPref('valoraciones_usuario') || {}; }
+        function setValoracion(titulo, estrellas) {
+            const vals = getValoraciones();
+            if (estrellas === 0) { delete vals[titulo]; } else { vals[titulo] = estrellas; }
+            setPref('valoraciones_usuario', vals);
+        }
+        function toggleRatingDetalle(titulo, estrellas) {
+            const vals = getValoraciones();
+            const actual = vals[titulo] || 0;
+            const nueva = (actual === estrellas) ? 0 : estrellas;
+            setValoracion(titulo, nueva);
+            document.querySelectorAll('.user-rating-detail-star').forEach((s, i) => {
+                s.classList.toggle('active', i < nueva);
+            });
+        }
+
+        function getFechasVistas()  { return getPref('fechas_vistas') || {}; }
+
+        const params = new URLSearchParams(window.location.search);
+        const tituloPeli = params.get('peli');
+        const peli = peliculas.find(p => p.titulo === tituloPeli);
+
+        function obtenerProgreso(titulo) {
+            const progresos = getPref('progreso_video') || {};
+            return progresos[titulo]?.tiempo || 0;
+        }
+
+        function guardarProgreso(titulo, tiempo, duracion = 0) {
+            const progresos = getPref('progreso_video') || {};
+            const duracionExistente = progresos[titulo]?.duracion || duracion;
+            progresos[titulo] = { tiempo: tiempo, duracion: duracionExistente };
+            setPref('progreso_video', progresos);
+        }
+
+        // Guarda solo la duración real del video sin alterar el progreso de reproducción.
+        // Se llama automáticamente al cargar los metadatos del video de fondo,
+        // sin necesidad de que el usuario pulse Reproducir ni de añadir el campo en data.js.
+        function guardarDuracion(titulo, duracion) {
+            if (!duracion || !isFinite(duracion) || duracion <= 0) return;
+            const progresos = getPref('progreso_video') || {};
+            if (!progresos[titulo]) progresos[titulo] = { tiempo: 0 };
+            progresos[titulo].duracion = duracion;
+            setPref('progreso_video', progresos);
+        }
+
+
+
+
+function generarEstrellas(puntuacion) {
+    const puntuacionBase5 = puntuacion / 2; // Convertimos de escala 10 a 5
+    let htmlEstrellas = '<div class="stars-container">';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= Math.floor(puntuacionBase5)) {
+            htmlEstrellas += '<span>★</span>';
+        } else if (i - 0.5 <= puntuacionBase5) {
+            htmlEstrellas += '<span>½</span>';
+        } else {
+            htmlEstrellas += '<span style="color: #444;">★</span>';
+        }
+    }
+    htmlEstrellas += '</div>';
+    return htmlEstrellas;
+}
+
+
+
+        if (peli) {
+            const rutaBase = `peliculas/${peli.carpeta}/`;
+            const urlImagen = encodeURI(`${rutaBase}${peli.caratula}`);
+            const videoSource = encodeURI(`${rutaBase}${peli.archivo || 'video.mp4'}`);
+            
+            document.getElementById('hero-bg').style.backgroundImage = `url('${urlImagen}')`;
+
+            let favoritos   = getPref('mis_favoritos') || [];
+            let vistos      = getPref('pelis_vistas') || [];
+            let descartadas = getPref('pelis_descartadas') || [];
+            const esFav   = favoritos.includes(peli.titulo);
+            const esVisto = vistos.includes(peli.titulo);
+            const esDesc  = descartadas.includes(peli.titulo);
+            const estrellasHtml = generarEstrellas(peli.puntuacion || 0);
+            const valUsr = (getValoraciones()[peli.titulo] || 0);
+            const userRatingHtml = `<div class="user-rating-detail">
+                <span class="user-rating-detail-label">Mi valoración</span>
+                ${[1,2,3,4,5].map(i =>
+                    `<span class="user-rating-detail-star${valUsr >= i ? ' active' : ''}" onclick="toggleRatingDetalle('${peli.titulo.replace(/'/g,"\\'")}',${i})">★</span>`
+                ).join('')}
+            </div>`;
+
+            const segGuardados = obtenerProgreso(peli.titulo);
+            let textoBoton = "▶ Reproducir";
+            if (segGuardados > 60) {
+                const mins = Math.floor(segGuardados / 60);
+                textoBoton = `▶ Continuar (${mins} min)`;
+            }
+
+            const claseTitulo = peli.titulo.length > 20 ? 'titulo-largo' : '';
+
+            document.getElementById('movie-details').innerHTML = `
+                <div class="top-info">
+                    <h1 class="${claseTitulo}">${peli.titulo}</h1>
+                    ${estrellasHtml}
+                    ${userRatingHtml}
+                </div>
+
+                <div class="bottom-info">
+                    <div class="action-buttons">
+                        <button class="play-button" onclick="lanzarVideo()">${textoBoton}</button>
+                        <button id="btn-fav-main" class="btn-fav-detail ${esFav ? 'active' : ''}" onclick="toggleFavoritoDetalle('${peli.titulo.replace(/'/g, "\\'")}')">
+                            <span id="fav-text">${esFav ? '♥ En Favoritos' : '♥ Añadir a Favoritos'}</span>
+                        </button>
+                        <div class="btn-row">
+                            <button id="btn-visto-main" class="btn-visto-detail ${esVisto ? 'active' : ''}" onclick="toggleVistoDetalle('${peli.titulo.replace(/'/g, "\\'")}')">
+                                <span id="visto-text">${esVisto ? '✓ Vista' : '✓ Marcar como vista'}</span>
+                            </button>
+                            <button id="btn-desc-main" class="btn-desc-detail ${esDesc ? 'active' : ''}" onclick="toggleDescartarDetalle('${peli.titulo.replace(/'/g, "\\'")}')">
+                                <span id="desc-text">${esDesc ? '✕ Descartada' : '✕ Descartar'}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="description-side">
+                        <div class="meta">${peli.genero} • ${peli.anio} • ${peli.puntuacion}/10</div>
+                        <p class="description">${peli.descripcion}</p>
+                    </div>
+                </div>
+            `;
+
+            const bgVideo = document.getElementById('bg-video-full');
+            bgVideo.src = videoSource;
+
+            // Captura la duración real en cuanto el navegador lee los metadatos del archivo,
+            // independientemente de si el usuario reproduce el video o no.
+            bgVideo.addEventListener('loadedmetadata', function capturarDuracion() {
+                guardarDuracion(peli.titulo, bgVideo.duration);
+            }, { once: true });
+
+            document.getElementById('video-source').src = videoSource;
+            document.getElementById('main-player').load();
+
+            // Inicia el video de fondo en cuanto los metadatos estén listos,
+            // sin depender de un temporizador fijo.
+            bgVideo.addEventListener('loadedmetadata', function iniciarBgVideo() {
+                bgVideo.currentTime = Math.random() * (bgVideo.duration * 0.5);
+                bgVideo.play().catch(() => {});
+                bgVideo.style.opacity = "1";
+                document.getElementById('mute-btn').style.display = "flex";
+            }, { once: true });
+        }
+
+        function toggleMute() {
+            const bgVideo = document.getElementById('bg-video-full');
+            const icon = document.getElementById('mute-icon');
+            bgVideo.muted = !bgVideo.muted;
+            icon.innerText = bgVideo.muted ? "🔇" : "🔊";
+        }
+
+        function toggleFavoritoDetalle(titulo) {
+            let favoritos = getPref('mis_favoritos') || [];
+            const btn = document.getElementById('btn-fav-main');
+            const txt = document.getElementById('fav-text');
+            if (favoritos.includes(titulo)) {
+                favoritos = favoritos.filter(f => f !== titulo);
+                btn.classList.remove('active');
+                txt.innerText = "♥ Añadir a Favoritos";
+            } else {
+                favoritos.push(titulo);
+                btn.classList.add('active');
+                txt.innerText = "♥ En Favoritos";
+            }
+            setPref('mis_favoritos', favoritos);
+        }
+
+        function toggleVistoDetalle(titulo) {
+            let vistos = getPref('pelis_vistas') || [];
+            const btn = document.getElementById('btn-visto-main');
+            const txt = document.getElementById('visto-text');
+            const fechas = getFechasVistas();
+            if (vistos.includes(titulo)) {
+                vistos = vistos.filter(v => v !== titulo);
+                btn.classList.remove('active');
+                txt.innerText = "✓ Marcar como vista";
+                delete fechas[titulo];
+            } else {
+                vistos.push(titulo);
+                btn.classList.add('active');
+                txt.innerText = "✓ Vista";
+                fechas[titulo] = Date.now();
+            }
+            setPref('pelis_vistas', vistos);
+            setPref('fechas_vistas', fechas);
+        }
+
+        function toggleDescartarDetalle(titulo) {
+            let descartadas = getPref('pelis_descartadas') || [];
+            const btn = document.getElementById('btn-desc-main');
+            const txt = document.getElementById('desc-text');
+            if (descartadas.includes(titulo)) {
+                descartadas = descartadas.filter(d => d !== titulo);
+                btn.classList.remove('active');
+                txt.innerText = "✕ Descartar";
+            } else {
+                descartadas.push(titulo);
+                btn.classList.add('active');
+                txt.innerText = "✕ Descartada";
+            }
+            setPref('pelis_descartadas', descartadas);
+        }
+
+        function lanzarVideo() {
+            const contenedor = document.getElementById('video-container');
+            const video = document.getElementById('main-player');
+            const bgVideo = document.getElementById('bg-video-full');
+            
+            if(bgVideo) bgVideo.pause();
+            contenedor.style.display = 'block';
+
+            const tiempoGuardado = obtenerProgreso(peli.titulo);
+            if (tiempoGuardado > 5) video.currentTime = tiempoGuardado;
+
+            if (contenedor.requestFullscreen) {
+                contenedor.requestFullscreen();
+            } else if (contenedor.webkitRequestFullscreen) {
+                contenedor.webkitRequestFullscreen();
+            }
+            video.play();
+
+            video.ontimeupdate = () => {
+                if (video.duration - video.currentTime > 20) {
+                    guardarProgreso(peli.titulo, video.currentTime, video.duration);
+                } else {
+                    guardarProgreso(peli.titulo, 0, video.duration); 
+                }
+            };
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const contenedor = document.getElementById('video-container');
+            const video = document.getElementById('main-player');
+            const bgVideo = document.getElementById('bg-video-full');
+            if (!document.fullscreenElement) {
+                video.pause();
+                contenedor.style.display = 'none';
+                if(bgVideo && bgVideo.style.opacity === "1") bgVideo.play();
+            }
+        });
+    </script>
+</body>
+</html>
