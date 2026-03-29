@@ -65,10 +65,7 @@ CineLocal es una **Progressive Web App (PWA)** de videoteca personal que transfo
 
 ## Capturas de pantalla
 
-![01](https://github.com/user-attachments/assets/32dd82ca-162c-459e-9a35-484b2df814af)
-![02](https://github.com/user-attachments/assets/4b4e7766-70bd-49c4-ab6c-8accff7a0fb0)
-![03](https://github.com/user-attachments/assets/adb64943-0d95-4439-bd05-3c7121855ab0)
-![04](https://github.com/user-attachments/assets/aece63d2-3310-4b90-aef4-a5d3b0884a91)
+![Captura](https://github.com/user-attachments/assets/db296d7f-35c0-46f2-9558-ef317f03b24f)
 
 ---
 
